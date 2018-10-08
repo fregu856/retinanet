@@ -21,12 +21,14 @@ class FPN_Bottleneck(nn.Module):
         #     resnet.load_state_dict(torch.load("/staging/frexgus/frustum_pointnet/resnet34-333f7ec4.pth"))
         #     # remove fully connected layer and avg pool:
         #     self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
+        #     print ("pretrained resnet, 101")
         # elif num_layers == 152:
         #     resnet = models.resnet152()
         #     # load pretrained model:
         #     resnet.load_state_dict(torch.load("/staging/frexgus/frustum_pointnet/resnet34-333f7ec4.pth"))
         #     # remove fully connected layer and avg pool:
         #     self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
+        #     print ("pretrained resnet, 152")
         else:
             raise Exception("num_layers must be in {50, 101, 152}!")
 

@@ -1,4 +1,4 @@
-# based off of https://github.com/kuangliu/pytorch-retinanet/blob/master/fpn.py and https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
+# NOTE! based off of https://github.com/kuangliu/pytorch-retinanet/blob/master/fpn.py and https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
 
 import torch
 import torch.nn as nn

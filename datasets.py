@@ -14,9 +14,10 @@ class_string_to_label = {"Car": 1,
                          "Pedestrian": 2,
                          "Cyclist": 3} # (background: 0)
 
+################################################################################
+# debug helper functions START
+################################################################################
 def create2Dbbox_poly(bbox2D):
-    # based on LabelLoader in # https://gerrit.zenuity.com/plugins/gitiles/dl-data-visualization/+/refs/heads/master/datavisualizer/dataloader/kittiloader.py
-
     u_min = bbox2D[0] # (left)
     u_max = bbox2D[1] # (rigth)
     v_min = bbox2D[2] # (top)
@@ -29,8 +30,6 @@ def create2Dbbox_poly(bbox2D):
     return poly
 
 def draw_2d_polys_no_text(img, polys):
-    # modified version of function polys0_image in https://gerrit.zenuity.com/plugins/gitiles/dl-data-visualization/+/refs/heads/master/datavisualizer/visualizer/visualizer.py
-
     img = np.copy(img)
     for poly in polys:
         if 'color' in poly:
@@ -41,9 +40,12 @@ def draw_2d_polys_no_text(img, polys):
         cv2.polylines(img, np.int32([poly['poly']]), True, bg, lineType=cv2.LINE_AA, thickness=2)
 
     return img
+################################################################################
+# debug helper functions END
+################################################################################
 
 class BboxEncoder:
-    # based off of https://github.com/kuangliu/pytorch-retinanet/blob/master/encoder.py and https://github.com/kuangliu/pytorch-retinanet/blob/master/utils.py
+    # NOTE! based off of https://github.com/kuangliu/pytorch-retinanet/blob/master/encoder.py and https://github.com/kuangliu/pytorch-retinanet/blob/master/utils.py
 
     def __init__(self, img_h, img_w):
         self.anchor_areas = [32.0*32.0, 64.0*64.0, 128.0*128.0, 256.0*256.0, 512.0*512.0] # (areas for p4, p5, p6, p7, p8)
@@ -400,7 +402,7 @@ class BboxEncoder:
 # bbox_encoder.encode(torch.Tensor([[600, 800, 300, 400], [640, 810, 200, 300]]), torch.Tensor([1, 2]))
 # bbox_encoder.decode(torch.ones((bbox_encoder.num_anchors, 4)), torch.ones((bbbox_encoder.num_anchors, 4)))
 
-class DatasetRetinaNetAugmentation(torch.utils.data.Dataset):
+class DatasetAugmentation(torch.utils.data.Dataset):
     def __init__(self, kitti_data_path, kitti_meta_path, type):
         self.img_dir = kitti_data_path + "/object/training/image_2/"
         self.label_dir = kitti_data_path + "/object/training/label_2/"
@@ -418,7 +420,6 @@ class DatasetRetinaNetAugmentation(torch.utils.data.Dataset):
 
         self.examples = []
         for img_id in img_ids:
-            #if img_id in ["000006", "000007", "000008", "000009", "000010", "000011", "000012", "000013", "000014", "000015", "000016", "000017", "000018", "000019", "000020", "000021"]:
             example = {}
             example["img_id"] = img_id
 
@@ -486,7 +487,7 @@ class DatasetRetinaNetAugmentation(torch.utils.data.Dataset):
         # # # # # #
 
         ########################################################################
-        # normalize the img: # NOTE! gonna try to not normalize the image by mean and std, since you can't do this with a learned lidar top-view, rigth?
+        # normalize the img:
         ########################################################################
         img = img/255.0
         img = img - np.array([0.485, 0.456, 0.406])
@@ -516,11 +517,11 @@ class DatasetRetinaNetAugmentation(torch.utils.data.Dataset):
     def __len__(self):
         return self.num_examples
 
-# test = DatasetRetinaNetAugmentation("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="train")
+# test = DatasetAugmentation("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="train")
 # for i in range(10):
 #     _ = test.__getitem__(i)
 
-class DatasetRetinaNetEval(torch.utils.data.Dataset):
+class DatasetEval(torch.utils.data.Dataset):
     def __init__(self, kitti_data_path, kitti_meta_path, type):
         self.img_dir = kitti_data_path + "/object/training/image_2/"
         self.label_dir = kitti_data_path + "/object/training/label_2/"
@@ -538,7 +539,6 @@ class DatasetRetinaNetEval(torch.utils.data.Dataset):
 
         self.examples = []
         for img_id in img_ids:
-            #if img_id in ["000006", "000007", "000008", "000009", "000010", "000011", "000012", "000013", "000014", "000015", "000016", "000017", "000018", "000019", "000020", "000021"]:
             example = {}
             example["img_id"] = img_id
 
@@ -593,7 +593,7 @@ class DatasetRetinaNetEval(torch.utils.data.Dataset):
         # # # # # #
 
         ########################################################################
-        # normalize the img: # NOTE! gonna try to not normalize the image, since you can't do this with a learned lidar top-view, rigth?
+        # normalize the img:
         ########################################################################
         img = img/255.0
         img = img - np.array([0.485, 0.456, 0.406])
@@ -623,6 +623,6 @@ class DatasetRetinaNetEval(torch.utils.data.Dataset):
     def __len__(self):
         return self.num_examples
 
-# test = DatasetRetinaNetEval("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="val")
+# test = DatasetEval("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="val")
 # for i in range(10):
 #     _ = test.__getitem__(i)
