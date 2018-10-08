@@ -21,8 +21,6 @@ class RetinaNet(nn.Module):
 
         self.fpn = FPN18() # NOTE! (FPN18, FPN34, FPN50, FPN101 or FPN152)
 
-        print ("changed retinanet")
-
         self.class_conv1 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
         self.class_conv2 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
         self.class_conv3 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)

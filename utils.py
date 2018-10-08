@@ -4,10 +4,6 @@ from torch.autograd import Variable
 
 import math
 
-def gradClamp(parameters, clip):
-    for p in parameters:
-        p.grad.data = p.grad.data.clamp_(max=clip)
-
 def onehot_embed(labels, num_classes):
     # (labels is a Variable of dtype LongTensor and shape: (n, ))
 

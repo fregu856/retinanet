@@ -1,7 +1,7 @@
-from datasets import DatasetRetinaNetAugmentation, DatasetRetinaNetEval # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+from datasets import DatasetAugmentation, DatasetEval # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
 
-from utils import onehot_embed, init_weights, add_weight_decay, gradClamp
+from utils import onehot_embed, init_weights, add_weight_decay
 
 import torch
 import torch.utils.data
@@ -19,16 +19,13 @@ import cv2
 
 import time
 
-# NOTE! NOTE! change this to not overwrite all log data when you train the model:
-model_id = "8"
+# NOTE! change this to not overwrite all log data when you train the model:
+model_id = "1"
 
 num_epochs = 1000
 batch_size = 16
 learning_rate = 0.001
 max_grad_norm = 1.0
-
-print ("max_grad_norm:")
-print (max_grad_norm)
 
 lambda_value = 100.0 # (loss weight)
 gamma = 4.0
@@ -38,12 +35,12 @@ init_weights(network)
 
 num_classes = network.num_classes
 
-train_dataset = DatasetRetinaNetAugmentation(kitti_data_path="/datasets/kitti",
-                                             kitti_meta_path="/staging/frexgus/kitti/meta",
-                                             type="train")
-val_dataset = DatasetRetinaNetEval(kitti_data_path="/datasets/kitti",
-                                   kitti_meta_path="/staging/frexgus/kitti/meta",
-                                   type="val")
+train_dataset = DatasetAugmentation(kitti_data_path="/root/3DOD_thesis/data/kitti",
+                                    kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+                                    type="train")
+val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
+                          kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+                          type="val")
 
 num_train_batches = int(len(train_dataset)/batch_size)
 num_val_batches = int(len(val_dataset)/batch_size)
@@ -148,7 +145,7 @@ for epoch in range(num_epochs):
 
         loss_regr = regression_loss_func(outputs_regr, labels_regr)
 
-        loss_regr_value = loss_regr.data.cpu().numpy()[0]
+        loss_regr_value = loss_regr.data.cpu().numpy()
         batch_losses_regr.append(loss_regr_value)
 
         if step == 0:
@@ -184,7 +181,7 @@ for epoch in range(num_epochs):
         loss_class, _ = torch.max(loss_class, dim=1) # (shape: (num_class_anchors, ))
         loss_class = torch.sum(loss_class/num_foreground_anchors)
 
-        loss_class_value = loss_class.data.cpu().numpy()[0]
+        loss_class_value = loss_class.data.cpu().numpy()
         batch_losses_class.append(loss_class_value)
 
         if step == 0:
@@ -206,7 +203,7 @@ for epoch in range(num_epochs):
         ########################################################################
         loss = loss_class + lambda_value*loss_regr
 
-        loss_value = loss.data.cpu().numpy()[0]
+        loss_value = loss.data.cpu().numpy()
         batch_losses.append(loss_value)
 
         ########################################################################
@@ -305,7 +302,7 @@ for epoch in range(num_epochs):
 
             loss_regr = regression_loss_func(outputs_regr, labels_regr)
 
-            loss_regr_value = loss_regr.data.cpu().numpy()[0]
+            loss_regr_value = loss_regr.data.cpu().numpy()
             batch_losses_regr.append(loss_regr_value)
 
             ########################################################################
@@ -329,7 +326,7 @@ for epoch in range(num_epochs):
             loss_class, _ = torch.max(loss_class, dim=1) # (shape: (num_class_anchors, ))
             loss_class = torch.sum(loss_class/num_foreground_anchors)
 
-            loss_class_value = loss_class.data.cpu().numpy()[0]
+            loss_class_value = loss_class.data.cpu().numpy()
             batch_losses_class.append(loss_class_value)
 
             ########################################################################
@@ -337,7 +334,7 @@ for epoch in range(num_epochs):
             ########################################################################
             loss = loss_class + lambda_value*loss_regr
 
-            loss_value = loss.data.cpu().numpy()[0]
+            loss_value = loss.data.cpu().numpy()
             batch_losses.append(loss_value)
 
     epoch_loss = np.mean(batch_losses)
