@@ -11,24 +11,24 @@ class FPN_Bottleneck(nn.Module):
         if num_layers == 50:
             resnet = models.resnet50()
             # load pretrained model:
-            resnet.load_state_dict(torch.load("/staging/frexgus/frustum_pointnet/resnet50-19c8e357.pth"))
+            resnet.load_state_dict(torch.load("/root/retinanet/pretrained_models/resnet/resnet50-19c8e357.pth"))
             # remove fully connected layer and avg pool:
             self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
             print ("pretrained resnet, 50")
-        # elif num_layers == 101:
-        #     resnet = models.resnet101()
-        #     # load pretrained model:
-        #     resnet.load_state_dict(torch.load("/staging/frexgus/frustum_pointnet/resnet34-333f7ec4.pth"))
-        #     # remove fully connected layer and avg pool:
-        #     self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
-        #     print ("pretrained resnet, 101")
-        # elif num_layers == 152:
-        #     resnet = models.resnet152()
-        #     # load pretrained model:
-        #     resnet.load_state_dict(torch.load("/staging/frexgus/frustum_pointnet/resnet34-333f7ec4.pth"))
-        #     # remove fully connected layer and avg pool:
-        #     self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
-        #     print ("pretrained resnet, 152")
+        elif num_layers == 101:
+            resnet = models.resnet101()
+            # load pretrained model:
+            resnet.load_state_dict(torch.load("/root/retinanet/pretrained_models/resnet/resnet101-5d3b4d8f.pth"))
+            # remove fully connected layer and avg pool:
+            self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
+            print ("pretrained resnet, 101")
+        elif num_layers == 152:
+            resnet = models.resnet152()
+            # load pretrained model:
+            resnet.load_state_dict(torch.load("/root/retinanet/pretrained_models/resnet/resnet152-b121ed2d.pth"))
+            # remove fully connected layer and avg pool:
+            self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
+            print ("pretrained resnet, 152")
         else:
             raise Exception("num_layers must be in {50, 101, 152}!")
 
@@ -98,14 +98,14 @@ class FPN_BasicBlock(nn.Module):
         if num_layers == 18:
             resnet = models.resnet18()
             # load pretrained model:
-            resnet.load_state_dict(torch.load("/staging/frexgus/frustum_pointnet/resnet18-5c106cde.pth"))
+            resnet.load_state_dict(torch.load("/root/retinanet/pretrained_models/resnet/resnet18-5c106cde.pth"))
             # remove fully connected layer and avg pool:
             self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
             print ("pretrained resnet, 18")
         elif num_layers == 34:
             resnet = models.resnet34()
             # load pretrained model:
-            resnet.load_state_dict(torch.load("/staging/frexgus/frustum_pointnet/resnet34-333f7ec4.pth"))
+            resnet.load_state_dict(torch.load("/root/retinanet/pretrained_models/resnet/resnet34-333f7ec4.pth"))
             # remove fully connected layer and avg pool:
             self.resnet_layers = nn.ModuleList(list(resnet.children())[:-2])
             print ("pretrained resnet, 34")
