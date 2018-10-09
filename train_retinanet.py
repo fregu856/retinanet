@@ -2738,7 +2738,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "8" # (like 6_2)
+model_id = "8_2"
 
 num_epochs = 1000
 batch_size = 16
@@ -2788,13 +2788,6 @@ for epoch in range(num_epochs):
     print ("######## NEW EPOCH ########")
     print ("###########################")
     print ("epoch: %d/%d" % (epoch+1, num_epochs))
-
-    if epoch % 25 == 0 and epoch > 0:
-        learning_rate = learning_rate/2
-        optimizer = torch.optim.Adam(params, lr=learning_rate)
-
-    print ("learning_rate:")
-    print (learning_rate)
 
     ################################################################################
     # train:

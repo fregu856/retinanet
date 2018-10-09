@@ -64,7 +64,7 @@ img_dir = data_dir + "image_2/"
 bbox_encoder = BboxEncoder(img_h=img_height, img_w=img_width)
 
 # NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! # NOTE!
-with open("/home/fregu856/retinanet/training_logs/model_7_3/eval_dict_train_55.pkl", "rb") as file:
+with open("/home/fregu856/retinanet/training_logs/model_8_2/eval_dict_train_50.pkl", "rb") as file:
     eval_dict = pickle.load(file)
 
 for img_id in eval_dict:
