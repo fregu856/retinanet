@@ -3,6 +3,8 @@ import numpy as np
 import math
 import cv2
 
+import torch
+
 from datasets import BboxEncoder
 
 def create2Dbbox_poly(bbox2D):
@@ -62,7 +64,7 @@ img_dir = data_dir + "image_2/"
 bbox_encoder = BboxEncoder(img_h=img_height, img_w=img_width)
 
 # NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! # NOTE!
-with open("/home/fregu856/exjobb/training_logs/retinanet/training_logs/model_3_2/eval_dict.pkl", "rb") as file:
+with open("/home/fregu856/retinanet/training_logs/model_6_2/eval_dict_val_350.pkl", "rb") as file:
     eval_dict = pickle.load(file)
 
 for img_id in eval_dict:
@@ -73,13 +75,13 @@ for img_id in eval_dict:
 
         img = cv2.imread(img_dir + img_id + ".png", -1)
 
-        pred_bboxes_xywh = img_dict["pred_bboxes"]
-        pred_probs = img_dict["pred_probs"].numpy()
-        pred_class_labels = img_dict["pred_class_labels"].numpy()
+        pred_bboxes_xywh = torch.from_numpy(img_dict["pred_bboxes"])
+        pred_probs = img_dict["pred_max_scores"]
+        pred_class_labels = img_dict["pred_class_labels"]
         pred_bboxes_xxyy = bbox_encoder._xywh_2_xxyy(pred_bboxes_xywh).numpy()
 
-        gt_bboxes_xywh = img_dict["gt_bboxes"]
-        gt_class_labels = img_dict["gt_class_labels"].numpy()
+        gt_bboxes_xywh = torch.from_numpy(img_dict["gt_bboxes"])
+        gt_class_labels = img_dict["gt_class_labels"]
         gt_bboxes_xxyy = bbox_encoder._xywh_2_xxyy(gt_bboxes_xywh).numpy()
 
         pred_bbox_polys = []

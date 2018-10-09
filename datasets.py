@@ -53,7 +53,7 @@ class BboxEncoder:
         self.scale_ratios = [1.0, pow(2, 1.0/3.0), pow(2, 2.0/3.0)]
 
         self.nms_thresh = 0.5
-        self.class_thresh = 0.5
+        self.class_thresh = 0.65
 
         self.img_h = img_h
         self.img_w = img_w
@@ -348,21 +348,6 @@ class BboxEncoder:
         # (outputs_class has shape (num_anchors, num_classes))
         # (self.anchor_bboxes has shape (num_anchors, 4), (x, y, w, h))
 
-        # pred_x = anchor_w*output_x + anchor_x:
-        pred_x = self.anchor_bboxes[:, 2]*outputs_regr[:, 0] + self.anchor_bboxes[:, 0] # (shape (num_anchors, ))
-        pred_x = pred_x.view(-1, 1) # (shape (num_anchors, 1))
-        # pred_y = anchor_h*output_y + anchor_y:
-        pred_y = self.anchor_bboxes[:, 3]*outputs_regr[:, 1] + self.anchor_bboxes[:, 1]
-        pred_y = pred_y.view(-1, 1)
-        # pred_w = exp(output_w)*anchor_w:
-        pred_w = torch.exp(outputs_regr[:, 2])*self.anchor_bboxes[:, 2]
-        pred_w = pred_w.view(-1, 1)
-        # pred_h = exp(output_h)*anchor_h:
-        pred_h = torch.exp(outputs_regr[:, 3])*self.anchor_bboxes[:, 3]
-        pred_h = pred_h.view(-1, 1)
-
-        pred_bboxes = torch.cat([pred_x, pred_y, pred_w, pred_h], 1) # (shape (num_anchors, 4), (x, y, w, h))
-
         # for each anchor bbox, get the pred class label and the corresponding pred score:
         pred_scores = F.softmax(Variable(outputs_class), dim=1).data # (shape (num_anchors, num_classes))
         pred_max_scores, pred_class_labels = torch.max(pred_scores, 1) # (both have shape (num_anchors, ))
@@ -373,7 +358,8 @@ class BboxEncoder:
         keep_inds = keep_inds.squeeze() # (shape (num_foreground_preds, ), entries are unique and in {0, 1,..., num_anchors})
 
         # get all pred non-background bboxes:
-        pred_bboxes = pred_bboxes[keep_inds] # (shape (num_foreground_preds, 4), (x, y, w, h))
+        outputs_regr = outputs_regr[keep_inds] # (shape (num_foreground_preds, 4), (x, y, w, h))
+        anchor_bboxes = self.anchor_bboxes[keep_inds] # (shape (num_foreground_preds, 4), (x, y, w, h))
         pred_max_scores = pred_max_scores[keep_inds] # (shape (num_foreground_preds, ))
         pred_class_labels = pred_class_labels[keep_inds] # (shape (num_foreground_preds, ))
 
@@ -383,9 +369,28 @@ class BboxEncoder:
         keep_inds = keep_inds.squeeze() # (shape (num_preds_before_nms, ), entries are unique and in {0, 1,..., num_foreground_preds})
 
         # get all pred bboxes with a large enough pred class score:
-        pred_bboxes = pred_bboxes[keep_inds] # (shape (num_preds_before_nms, 4), (x, y, w, h))
+        outputs_regr = outputs_regr[keep_inds] # (shape (num_preds_before_nms, 4), (x, y, w, h))
+        anchor_bboxes = anchor_bboxes[keep_inds] # (shape (num_preds_before_nms, 4), (x, y, w, h))
         pred_max_scores = pred_max_scores[keep_inds] # (shape (num_preds_before_nms, ))
         pred_class_labels = pred_class_labels[keep_inds] # (shape (num_preds_before_nms, ))
+
+        print ("Number of predicted bboxes before NMS:")
+        print (outputs_regr.size())
+
+        # pred_x = anchor_w*output_x + anchor_x:
+        pred_x = anchor_bboxes[:, 2]*outputs_regr[:, 0] + anchor_bboxes[:, 0] # (shape (num_anchors, ))
+        pred_x = pred_x.view(-1, 1) # (shape (num_anchors, 1))
+        # pred_y = anchor_h*output_y + anchor_y:
+        pred_y = anchor_bboxes[:, 3]*outputs_regr[:, 1] + anchor_bboxes[:, 1]
+        pred_y = pred_y.view(-1, 1)
+        # pred_w = exp(output_w)*anchor_w:
+        pred_w = torch.exp(outputs_regr[:, 2])*anchor_bboxes[:, 2]
+        pred_w = pred_w.view(-1, 1)
+        # pred_h = exp(output_h)*anchor_h:
+        pred_h = torch.exp(outputs_regr[:, 3])*anchor_bboxes[:, 3]
+        pred_h = pred_h.view(-1, 1)
+
+        pred_bboxes = torch.cat([pred_x, pred_y, pred_w, pred_h], 1) # (shape (num_preds_before_nms, 4), (x, y, w, h))
 
         # filter bboxes by performing nms:
         keep_inds = self._bbox_nms(pred_bboxes, pred_max_scores) # (shape: (num_preds_after_nms, ))
@@ -397,6 +402,27 @@ class BboxEncoder:
         # (pred_max_scores has shape (num_preds_after_nms, ))
         # (pred_class_labels has shape (num_preds_after_nms, ))
         return (pred_bboxes, pred_max_scores, pred_class_labels)
+
+    def decode_gt_single(self, labels_regr):
+        # (labels_regr has shape (num_anchors, 4), (x, y, w, h))
+        # (self.anchor_bboxes has shape (num_anchors, 4), (x, y, w, h))
+
+        # gt_x = anchor_w*label_x + anchor_x:
+        gt_x = self.anchor_bboxes[:, 2]*labels_regr[:, 0] + self.anchor_bboxes[:, 0] # (shape (num_anchors, ))
+        gt_x = gt_x.view(-1, 1) # (shape (num_anchors, 1))
+        # gt_y = anchor_h*label_y + anchor_y:
+        gt_y = self.anchor_bboxes[:, 3]*labels_regr[:, 1] + self.anchor_bboxes[:, 1]
+        gt_y = gt_y.view(-1, 1) # (shape (num_anchors, 1))
+        # gt_w = exp(label_w)*anchor_w:
+        gt_w = torch.exp(labels_regr[:, 2])*self.anchor_bboxes[:, 2]
+        gt_w = gt_w.view(-1, 1) # (shape (num_anchors, 1))
+        # gt_h = exp(label_h)*anchor_h:
+        gt_h = torch.exp(labels_regr[:, 3])*self.anchor_bboxes[:, 3]
+        gt_h = gt_h.view(-1, 1) # (shape (num_anchors, 1))
+
+        gt_bboxes = torch.cat([gt_x, gt_y, gt_w, gt_h], 1) # (shape (num_anchors, 4), (x, y, w, h))
+
+        return gt_bboxes
 
 # bbox_encoder = BboxEncoder()
 # bbox_encoder.encode(torch.Tensor([[600, 800, 300, 400], [640, 810, 200, 300]]), torch.Tensor([1, 2]))

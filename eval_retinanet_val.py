@@ -1,4 +1,6 @@
-from datasets import DatasetRetinaNetEval, BboxEncoder # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+# TODO! set the loss to the same one that I eventually settle on
+
+from datasets import DatasetEval, BboxEncoder # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
 
 from utils import onehot_embed
@@ -20,22 +22,20 @@ import cv2
 batch_size = 16
 
 lambda_value = 10 # (loss weight)
-alpha = 0.25
 gamma = 2.0
 
-network = RetinaNet("eval", project_dir="/staging/frexgus/retinanet").cuda()
-network.load_state_dict(torch.load("/staging/frexgus/retinanet/training_logs/model_5_4/checkpoints/model_5_4_epoch_300.pth"))
+network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_6_2/checkpoints/model_6_2_epoch_350.pth"))
 
 num_classes = network.num_classes
 
-val_dataset = DatasetRetinaNetEval(kitti_data_path="/datasets/kitti",
-                                   kitti_meta_path="/staging/frexgus/kitti/meta",
-                                   type="val")
+val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
+                          kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+                          type="val")
 
 bbox_encoder = BboxEncoder(img_h=val_dataset.img_height, img_w=val_dataset.img_width)
 
 num_val_batches = int(len(val_dataset)/batch_size)
-
 print ("num_val_batches:", num_val_batches)
 
 val_loader = torch.utils.data.DataLoader(dataset=val_dataset,
@@ -73,12 +73,30 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
                 # (pred_max_scores has shape (num_preds_after_nms, ))
                 # (pred_class_labels has shape (num_preds_after_nms, ))
 
+                print ("Number of predicted bboxes:")
                 print (pred_bboxes.size())
+                print ("####")
+
+                pred_bboxes = pred_bboxes.data.cpu().numpy()
+                pred_max_scores = pred_max_scores.data.cpu().numpy()
+                pred_class_labels = pred_class_labels.data.cpu().numpy()
+
+                label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
+                label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
+
+                gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
+                gt_bboxes = gt_bboxes.numpy()
+
+                mask = label_class > 0
+                gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
+                gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
 
                 img_dict = {}
                 img_dict["pred_bboxes"] = pred_bboxes
                 img_dict["pred_max_scores"] = pred_max_scores
                 img_dict["pred_class_labels"] = pred_class_labels
+                img_dict["gt_bboxes"] = gt_bboxes
+                img_dict["gt_class_labels"] = gt_class_labels
 
                 eval_dict[img_id] = img_dict
         ########################################################################
@@ -106,7 +124,7 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
 
         loss_regr = regression_loss_func(outputs_regr, labels_regr)
 
-        loss_regr_value = loss_regr.data.cpu().numpy()[0]
+        loss_regr_value = loss_regr.data.cpu().numpy()
         batch_losses_regr.append(loss_regr_value)
 
         ########################################################################
@@ -130,7 +148,7 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
         loss_class, _ = torch.max(loss_class, dim=1) # (shape: (num_class_anchors, ))
         loss_class = torch.mean(loss_class)
 
-        loss_class_value = loss_class.data.cpu().numpy()[0]
+        loss_class_value = loss_class.data.cpu().numpy()
         batch_losses_class.append(loss_class_value)
 
         ########################################################################
@@ -138,7 +156,7 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
         ########################################################################
         loss = loss_class + lambda_value*loss_regr
 
-        loss_value = loss.data.cpu().numpy()[0]
+        loss_value = loss.data.cpu().numpy()
         batch_losses.append(loss_value)
 
 epoch_loss = np.mean(batch_losses)
@@ -150,5 +168,5 @@ print ("val class loss: %g" % epoch_loss)
 epoch_loss = np.mean(batch_losses_regr)
 print ("val regr loss: %g" % epoch_loss)
 
-with open("%s/eval_dict.pkl" % network.model_dir, "wb") as file:
+with open("%s/eval_dict_val.pkl" % network.model_dir, "wb") as file:
     pickle.dump(eval_dict, file, protocol=2) # (protocol=2 is needed to be able to open this file with python2)
