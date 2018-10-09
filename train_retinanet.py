@@ -2329,7 +2329,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "7_2"
+model_id = "7_3"
 
 num_epochs = 1000
 batch_size = 16
@@ -2419,23 +2419,23 @@ for epoch in range(num_epochs):
         labels_regr = labels_regr[mask] # (shape: (num_regr_anchors_in_batch*4, ))
 
         num_foreground_anchors = float(labels_regr.size()[0]/4)
-
-        if step == 0:
-            print ("num_foreground_anchors:")
-            print (num_foreground_anchors)
+        #
+        # if step == 0:
+        #     print ("num_foreground_anchors:")
+        #     print (num_foreground_anchors)
 
         loss_regr = regression_loss_func(outputs_regr, labels_regr)
 
         loss_regr_value = loss_regr.data.cpu().numpy()
         batch_losses_regr.append(loss_regr_value)
 
-        if step == 0:
-            print ("outputs_regr.data.cpu().numpy():")
-            print (outputs_regr.data.cpu().numpy())
-            print (outputs_regr.data.cpu().numpy().shape)
-            print ("labels_regr.data.cpu().numpy():")
-            print (labels_regr.data.cpu().numpy())
-            print (labels_regr.data.cpu().numpy().shape)
+        # if step == 0:
+        #     print ("outputs_regr.data.cpu().numpy():")
+        #     print (outputs_regr.data.cpu().numpy())
+        #     print (outputs_regr.data.cpu().numpy().shape)
+        #     print ("labels_regr.data.cpu().numpy():")
+        #     print (labels_regr.data.cpu().numpy())
+        #     print (labels_regr.data.cpu().numpy().shape)
 
         ########################################################################
         # # compute the classification loss:
@@ -2453,24 +2453,24 @@ for epoch in range(num_epochs):
         num_foreground_anchors = labels_class_foreground.size()[0]*labels_class_foreground.size()[1] - np.sum(np.equal(labels_class_foreground.data.cpu().numpy(), -1))
         num_background_anchors = labels_class_background.size()[0]*labels_class_background.size()[1] - np.sum(np.equal(labels_class_background.data.cpu().numpy(), -1))
 
-        if step == 0:
-            print ("num_foreground_anchors:")
-            print (num_foreground_anchors)
-            print ("num_background_anchors:")
-            print (num_background_anchors)
+        # if step == 0:
+        #     print ("num_foreground_anchors:")
+        #     print (num_foreground_anchors)
+        #     print ("num_background_anchors:")
+        #     print (num_background_anchors)
 
         loss_class = loss_class_foreground + lambda_value_neg*loss_class_background
 
         loss_class_value = loss_class.data.cpu().numpy()
         batch_losses_class.append(loss_class_value)
 
-        if step == 0:
-            print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
-            print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
-            print (outputs_class.data.cpu().numpy().shape)
-            print ("labels_class.data.cpu().numpy():")
-            print (labels_class.data.cpu().numpy())
-            print (labels_class.data.cpu().numpy().shape)
+        # if step == 0:
+        #     print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
+        #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
+        #     print (outputs_class.data.cpu().numpy().shape)
+        #     print ("labels_class.data.cpu().numpy():")
+        #     print (labels_class.data.cpu().numpy())
+        #     print (labels_class.data.cpu().numpy().shape)
             # print ("F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
             # print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
             # print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
@@ -2492,6 +2492,35 @@ for epoch in range(num_epochs):
         optimizer.zero_grad() # (reset gradients)
         loss.backward() # (compute gradients)
         optimizer.step() # (perform optimization step)
+
+        # if step == 0:
+        #     print ("#################################################")
+        #     print ("################### GRADIENTS ###################")
+        #     print ("#################################################")
+        #     print ("network.class_conv1.weight.grad:")
+        #     print (network.class_conv1.weight.grad)
+        #     print ("network.class_conv2.weight.grad:")
+        #     print (network.class_conv2.weight.grad)
+        #     print ("network.class_conv3.weight.grad:")
+        #     print (network.class_conv3.weight.grad)
+        #     print ("network.class_conv4.weight.grad:")
+        #     print (network.class_conv4.weight.grad)
+        #     print ("network.class_conv5.weight.grad:")
+        #     print (network.class_conv5.weight.grad)
+        #
+        #     print ("network.regr_conv1.weight.grad:")
+        #     print (network.regr_conv1.weight.grad)
+        #     print ("network.regr_conv2.weight.grad:")
+        #     print (network.regr_conv2.weight.grad)
+        #     print ("network.regr_conv3.weight.grad:")
+        #     print (network.regr_conv3.weight.grad)
+        #     print ("network.regr_conv4.weight.grad:")
+        #     print (network.regr_conv4.weight.grad)
+        #     print ("network.regr_conv5.weight.grad:")
+        #     print (network.regr_conv5.weight.grad)
+        #
+        #     print ("network.fpn.conv6.weight.grad:")
+        #     print (network.fpn.conv6.weight.grad)
 
         #print (time.time() - current_time)
 
@@ -2572,22 +2601,22 @@ for epoch in range(num_epochs):
 
             num_foreground_anchors = float(labels_regr.size()[0]/4)
 
-            if step == 0:
-                print ("num_foreground_anchors:")
-                print (num_foreground_anchors)
+            # if step == 0:
+            #     print ("num_foreground_anchors:")
+            #     print (num_foreground_anchors)
 
             loss_regr = regression_loss_func(outputs_regr, labels_regr)
 
             loss_regr_value = loss_regr.data.cpu().numpy()
             batch_losses_regr.append(loss_regr_value)
-
-            if step == 0:
-                print ("outputs_regr.data.cpu().numpy():")
-                print (outputs_regr.data.cpu().numpy())
-                print (outputs_regr.data.cpu().numpy().shape)
-                print ("labels_regr.data.cpu().numpy():")
-                print (labels_regr.data.cpu().numpy())
-                print (labels_regr.data.cpu().numpy().shape)
+            #
+            # if step == 0:
+            #     print ("outputs_regr.data.cpu().numpy():")
+            #     print (outputs_regr.data.cpu().numpy())
+            #     print (outputs_regr.data.cpu().numpy().shape)
+            #     print ("labels_regr.data.cpu().numpy():")
+            #     print (labels_regr.data.cpu().numpy())
+            #     print (labels_regr.data.cpu().numpy().shape)
 
             ########################################################################
             # # compute the classification loss:
@@ -2605,24 +2634,24 @@ for epoch in range(num_epochs):
             num_foreground_anchors = labels_class_foreground.size()[0]*labels_class_foreground.size()[1] - np.sum(np.equal(labels_class_foreground.data.cpu().numpy(), -1))
             num_background_anchors = labels_class_background.size()[0]*labels_class_background.size()[1] - np.sum(np.equal(labels_class_background.data.cpu().numpy(), -1))
 
-            if step == 0:
-                print ("num_foreground_anchors:")
-                print (num_foreground_anchors)
-                print ("num_background_anchors:")
-                print (num_background_anchors)
+            # if step == 0:
+            #     print ("num_foreground_anchors:")
+            #     print (num_foreground_anchors)
+            #     print ("num_background_anchors:")
+            #     print (num_background_anchors)
 
             loss_class = loss_class_foreground + lambda_value_neg*loss_class_background
 
             loss_class_value = loss_class.data.cpu().numpy()
             batch_losses_class.append(loss_class_value)
 
-            if step == 0:
-                print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
-                print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
-                print (outputs_class.data.cpu().numpy().shape)
-                print ("labels_class.data.cpu().numpy():")
-                print (labels_class.data.cpu().numpy())
-                print (labels_class.data.cpu().numpy().shape)
+            # if step == 0:
+                # print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
+                # print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
+                # print (outputs_class.data.cpu().numpy().shape)
+                # print ("labels_class.data.cpu().numpy():")
+                # print (labels_class.data.cpu().numpy())
+                # print (labels_class.data.cpu().numpy().shape)
                 # print ("F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
                 # print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
                 # print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
