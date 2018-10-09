@@ -1,4 +1,4 @@
-from kittiloader import LabelLoader2D3D # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+from kittiloader import LabelLoader2D3D, LabelLoader2D3D_sequence # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 
 import torch
 import torch.utils.data
@@ -9,6 +9,7 @@ import pickle
 import numpy as np
 import cv2
 import math
+import os
 
 class_string_to_label = {"Car": 1,
                          "Pedestrian": 2,
@@ -374,8 +375,8 @@ class BboxEncoder:
         pred_max_scores = pred_max_scores[keep_inds] # (shape (num_preds_before_nms, ))
         pred_class_labels = pred_class_labels[keep_inds] # (shape (num_preds_before_nms, ))
 
-        print ("Number of predicted bboxes before NMS:")
-        print (outputs_regr.size())
+        # print ("Number of predicted bboxes before NMS:")
+        # print (outputs_regr.size())
 
         if (outputs_regr.size(0) > 0) and (outputs_regr.size() != torch.Size([4])):
             # pred_x = anchor_w*output_x + anchor_x:
@@ -404,7 +405,7 @@ class BboxEncoder:
             # (pred_class_labels has shape (num_preds_after_nms, ))
             return (pred_bboxes, pred_max_scores, pred_class_labels)
         else:
-            print ("None!")
+            #print ("None!")
             return (None, None, None)
 
     def decode_gt_single(self, labels_regr):
@@ -656,3 +657,116 @@ class DatasetEval(torch.utils.data.Dataset):
 # test = DatasetEval("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="val")
 # for i in range(10):
 #     _ = test.__getitem__(i)
+
+class DatasetEvalSeq(torch.utils.data.Dataset):
+    def __init__(self, kitti_data_path, kitti_meta_path, sequence):
+        self.img_dir = kitti_data_path + "/tracking/training/image_02/" + sequence + "/"
+        self.label_path = kitti_data_path + "/tracking/training/label_02/" + sequence + ".txt"
+        self.calib_path = kitti_meta_path + "/tracking/training/calib/" + sequence + ".txt" # NOTE! NOTE! the data format for the calib files was sliightly different for tracking, so I manually modifed the 20 files and saved them in the kitti_meta folder
+
+        self.img_height = 375
+        self.img_width = 1242
+
+        self.bbox_encoder = BboxEncoder(img_h=self.img_height, img_w=self.img_width)
+
+        self.num_classes = 4 # (car, pedestrian, cyclist, background)
+
+        img_ids = []
+        img_names = os.listdir(self.img_dir)
+        for img_name in img_names:
+            img_id = img_name.split(".png")[0]
+            img_ids.append(img_id)
+
+        self.examples = []
+        for img_id in img_ids:
+            example = {}
+            example["img_id"] = img_id
+
+            if img_id.lstrip('0') == '':
+                img_id_float = 0.0
+            else:
+                img_id_float = float(img_id.lstrip('0'))
+
+            labels = LabelLoader2D3D_sequence(img_id, img_id_float, self.label_path, self.calib_path)
+
+            bboxes = np.zeros((len(labels), 4), dtype=np.float32)
+            class_labels = np.zeros((len(labels), ), dtype=np.float32)
+            counter = 0
+            for label in labels:
+                label_2d = label["label_2D"]
+                if label_2d["truncated"] <= 0.50 and label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
+                    bbox = label_2d["poly"]
+                    u_min = bbox[0, 0] # (left)
+                    u_max = bbox[1, 0] # (rigth)
+                    v_min = bbox[0, 1] # (top)
+                    v_max = bbox[2, 1] # (bottom)
+                    bboxes[counter] = np.array([u_min, u_max, v_min, v_max])
+
+                    class_labels[counter] = class_string_to_label[label_2d["class"]]
+
+                    counter += 1
+
+            bboxes = bboxes[0:counter]
+            class_labels = class_labels[0:counter]
+
+            example["bboxes"] = bboxes
+            example["class_labels"] = class_labels
+            self.examples.append(example)
+
+        self.num_examples = len(self.examples)
+
+    def __getitem__(self, index):
+        example = self.examples[index]
+
+        img_id = example["img_id"]
+
+        img_path = self.img_dir + img_id + ".png"
+        img = cv2.imread(img_path, -1)
+        img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
+
+        gt_bboxes = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+
+        if gt_bboxes.shape[0] == 0:
+            return self.__getitem__(index-1)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes.shape[0]):
+        #     bbox = gt_bboxes[i]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        ########################################################################
+        # normalize the img:
+        ########################################################################
+        img = img/255.0
+        img = img - np.array([0.485, 0.456, 0.406])
+        img = img/np.array([0.229, 0.224, 0.225]) # (shape: (img_height, img_width, 3))
+        img = np.transpose(img, (2, 0, 1)) # (shape: (3, img_height, img_width))
+        img = img.astype(np.float32)
+
+        ########################################################################
+        # get ground truth:
+        ########################################################################
+        gt_bboxes = torch.from_numpy(gt_bboxes) # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = torch.from_numpy(example["class_labels"]) # (shape (num_gt_objects, ))
+        label_regr, label_class = self.bbox_encoder.encode(gt_bboxes, gt_classes)
+        # (label_regr is a Tensor of shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class is a Tensor of shape: (num_anchors, ))
+
+        ########################################################################
+        # convert numpy -> torch:
+        ########################################################################
+        img = torch.from_numpy(img) # (shape: (3, img_height, img_width))
+
+        # (img has shape: (3, img_height, img_width))
+        # (label_regr has shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class has shape: (num_anchors, ))
+        return (img, label_regr, label_class, img_id)
+
+    def __len__(self):
+        return self.num_examples
