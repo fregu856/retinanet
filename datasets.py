@@ -53,7 +53,7 @@ class BboxEncoder:
         self.scale_ratios = [1.0, pow(2, 1.0/3.0), pow(2, 2.0/3.0)]
 
         self.nms_thresh = 0.5
-        self.class_thresh = 0.65
+        self.class_thresh = 0.85
 
         self.img_h = img_h
         self.img_w = img_w
