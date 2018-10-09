@@ -201,7 +201,7 @@ lambda_value = 100.0 # (loss weight)
 lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_7_3/checkpoints/model_7_3_epoch_20.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_7_3/checkpoints/model_7_3_epoch_55.pth"))
 
 num_classes = network.num_classes
 
@@ -252,32 +252,33 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
                 # (pred_max_scores has shape (num_preds_after_nms, ))
                 # (pred_class_labels has shape (num_preds_after_nms, ))
 
-                print ("Number of predicted bboxes:")
-                print (pred_bboxes.size())
-                print ("####")
+                if pred_bboxes is not None:
+                    print ("Number of predicted bboxes:")
+                    print (pred_bboxes.size())
+                    print ("####")
 
-                pred_bboxes = pred_bboxes.data.cpu().numpy()
-                pred_max_scores = pred_max_scores.data.cpu().numpy()
-                pred_class_labels = pred_class_labels.data.cpu().numpy()
+                    pred_bboxes = pred_bboxes.data.cpu().numpy()
+                    pred_max_scores = pred_max_scores.data.cpu().numpy()
+                    pred_class_labels = pred_class_labels.data.cpu().numpy()
 
-                label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
-                label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
+                    label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
+                    label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
 
-                gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
-                gt_bboxes = gt_bboxes.numpy()
+                    gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
+                    gt_bboxes = gt_bboxes.numpy()
 
-                mask = label_class > 0
-                gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
-                gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
+                    mask = label_class > 0
+                    gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
+                    gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
 
-                img_dict = {}
-                img_dict["pred_bboxes"] = pred_bboxes
-                img_dict["pred_max_scores"] = pred_max_scores
-                img_dict["pred_class_labels"] = pred_class_labels
-                img_dict["gt_bboxes"] = gt_bboxes
-                img_dict["gt_class_labels"] = gt_class_labels
+                    img_dict = {}
+                    img_dict["pred_bboxes"] = pred_bboxes
+                    img_dict["pred_max_scores"] = pred_max_scores
+                    img_dict["pred_class_labels"] = pred_class_labels
+                    img_dict["gt_bboxes"] = gt_bboxes
+                    img_dict["gt_class_labels"] = gt_class_labels
 
-                eval_dict[img_id] = img_dict
+                    eval_dict[img_id] = img_dict
 
         ########################################################################
         # # compute the regression loss:
