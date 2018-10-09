@@ -2600,7 +2600,7 @@ for epoch in range(num_epochs):
             labels_regr = labels_regr[mask] # (shape: (num_regr_anchors_in_batch*4, ))
 
             num_foreground_anchors = float(labels_regr.size()[0]/4)
-
+            #
             # if step == 0:
             #     print ("num_foreground_anchors:")
             #     print (num_foreground_anchors)
@@ -2609,7 +2609,7 @@ for epoch in range(num_epochs):
 
             loss_regr_value = loss_regr.data.cpu().numpy()
             batch_losses_regr.append(loss_regr_value)
-            #
+
             # if step == 0:
             #     print ("outputs_regr.data.cpu().numpy():")
             #     print (outputs_regr.data.cpu().numpy())
@@ -2646,12 +2646,12 @@ for epoch in range(num_epochs):
             batch_losses_class.append(loss_class_value)
 
             # if step == 0:
-                # print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
-                # print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
-                # print (outputs_class.data.cpu().numpy().shape)
-                # print ("labels_class.data.cpu().numpy():")
-                # print (labels_class.data.cpu().numpy())
-                # print (labels_class.data.cpu().numpy().shape)
+            #     print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
+            #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
+            #     print (outputs_class.data.cpu().numpy().shape)
+            #     print ("labels_class.data.cpu().numpy():")
+            #     print (labels_class.data.cpu().numpy())
+            #     print (labels_class.data.cpu().numpy().shape)
                 # print ("F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
                 # print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
                 # print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)

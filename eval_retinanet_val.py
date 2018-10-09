@@ -174,7 +174,7 @@
 ################################################################################
 # attempt at not using .view() in the computation of the loss:
 ################################################################################
-# TODO! set the loss to the same one that I eventually settle on
+# TODO! set the loss to the exact same one that I eventually settle on
 
 from datasets import DatasetEval, BboxEncoder # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
@@ -197,11 +197,11 @@ import cv2
 
 batch_size = 16
 
-lambda_value = 10 # (loss weight)
-gamma = 2.0
+lambda_value = 100.0 # (loss weight)
+lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_7_2/checkpoints/model_7_2_epoch_70.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_7_3/checkpoints/model_7_3_epoch_20.pth"))
 
 num_classes = network.num_classes
 
@@ -219,6 +219,7 @@ val_loader = torch.utils.data.DataLoader(dataset=val_dataset,
                                          num_workers=4)
 
 regression_loss_func = nn.SmoothL1Loss()
+classification_loss_func = nn.CrossEntropyLoss(ignore_index=-1)
 
 network.eval() # (set in evaluation mode, this affects BatchNorm and dropout)
 batch_losses = []
@@ -277,28 +278,16 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
                 img_dict["gt_class_labels"] = gt_class_labels
 
                 eval_dict[img_id] = img_dict
-        ########################################################################
-
-        labels_regr = labels_regr.view(-1, 4) # (shape: (batch_size*num_anchors, 4))
-        labels_class = labels_class.view(-1, 1) # (shape: (batch_size*num_anchors, 1))
-        labels_class = labels_class.squeeze() # (shape: (batch_size*num_anchors, ))
-        labels_class = Variable(labels_class.data.type(torch.LongTensor)).cuda() # (shape: (batch_size*num_anchors, ))
-
-        outputs_regr = outputs_regr.view(-1, 4) # (shape: (batch_size*num_anchors, 4))
-        outputs_class = outputs_class.view(-1, num_classes) # (shape: (batch_size*num_anchors, num_classes))
-
-        # (entries in labels_class are in {-1, 0, 1, 2, 3, ..., num_classes-1},
-        # where -1: ignore, 0: background. -1 and 0 should be ignored for regression,
-        # -1 should be ignored for classification)
 
         ########################################################################
-        # compute the regression loss:
+        # # compute the regression loss:
         ########################################################################
         # remove entries which should be ignored (-1 and 0):
-        mask = labels_class > 0 # (shape: (batch_size*num_anchors, ), entries to be ignored are 0, the rest are 1)
+        mask = labels_class > 0 # (shape: (batch_size, num_anchors), entries to be ignored are 0, the rest are 1)
+        mask = mask.unsqueeze(-1).expand_as(outputs_regr) # (shape: (batch_size, num_anchors, 4))
         mask = mask.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-        outputs_regr = outputs_regr[mask, :] # (shape: (num_regr_anchors, 4))
-        labels_regr = labels_regr[mask, :] # (shape: (num_regr_anchors, 4))
+        outputs_regr = outputs_regr[mask] # (shape: (num_regr_anchors_in_batch*4, ))
+        labels_regr = labels_regr[mask] # (shape: (num_regr_anchors_in_batch*4, ))
 
         loss_regr = regression_loss_func(outputs_regr, labels_regr)
 
@@ -306,31 +295,25 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
         batch_losses_regr.append(loss_regr_value)
 
         ########################################################################
-        # compute the classification loss (Focal loss):
+        # # compute the classification loss:
         ########################################################################
-        # remove entries which should be ignored (-1):
-        mask = labels_class > -1 # (shape: (batch_size*num_anchors, ), entries to be ignored are 0, the rest are 1)
-        mask = mask.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-        outputs_class = outputs_class[mask, :] # (shape: (num_class_anchors, num_classes))
-        labels_class = labels_class[mask] # (shape: (num_class_anchors, ))
+        # (outputs_class has shape: (batch_size, num_classes, num_anchors))
 
-        #loss_class = F.nll_loss(F.log_softmax(outputs_class, dim=1), labels_class)
+        labels_class_background = labels_class.clone() # (shape: (batch_size, num_anchors))
+        labels_class_background[labels_class_background > 0] = -1 # (shape: (batch_size, num_anchors))
+        loss_class_background = classification_loss_func(outputs_class, labels_class_background)
 
-        labels_class_onehot = onehot_embed(labels_class, num_classes) # (shape: (num_class_anchors, num_classes))
+        labels_class_foreground = labels_class.clone() # (shape: (batch_size, num_anchors))
+        labels_class_foreground[labels_class_foreground == 0] = -1 # (shape: (batch_size, num_anchors))
+        loss_class_foreground = classification_loss_func(outputs_class, labels_class_foreground)
 
-        CE = -labels_class_onehot*F.log_softmax(outputs_class, dim=1) # (shape: (num_class_anchors, num_classes))
-
-        weight = labels_class_onehot*torch.pow(1 - F.softmax(outputs_class, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
-
-        loss_class = weight*CE # (shape: (num_class_anchors, num_classes))
-        loss_class, _ = torch.max(loss_class, dim=1) # (shape: (num_class_anchors, ))
-        loss_class = torch.mean(loss_class)
+        loss_class = loss_class_foreground + lambda_value_neg*loss_class_background
 
         loss_class_value = loss_class.data.cpu().numpy()
         batch_losses_class.append(loss_class_value)
 
         ########################################################################
-        # compute the total loss:
+        # # compute the total loss:
         ########################################################################
         loss = loss_class + lambda_value*loss_regr
 
