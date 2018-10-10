@@ -2716,7 +2716,7 @@
 ################################################################################
 # with focal loss AND separate class. losses for background and foreground AND with the contiguous fix:
 ################################################################################
-from datasets import DatasetAugmentation, DatasetEval # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+from datasets import DatasetMoreAugmentation2, DatasetEval # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
 
 from utils import onehot_embed, init_weights, add_weight_decay
@@ -2738,7 +2738,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "8_2_"
+model_id = "8_2_5_3"
 
 num_epochs = 1000
 batch_size = 16
@@ -2753,7 +2753,7 @@ network = RetinaNet(model_id, project_dir="/root/retinanet").cuda()
 
 num_classes = network.num_classes
 
-train_dataset = DatasetAugmentation(kitti_data_path="/root/3DOD_thesis/data/kitti",
+train_dataset = DatasetMoreAugmentation2(kitti_data_path="/root/3DOD_thesis/data/kitti",
                                     kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
                                     type="train")
 val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",

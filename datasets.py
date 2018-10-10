@@ -2,9 +2,9 @@ from kittiloader import LabelLoader2D3D, LabelLoader2D3D_sequence # (this needs 
 
 import sys
 
-# sys.path.append("/root/retinanet/data_aug")
-sys.path.append("/home/fregu856/retinanet/data_aug")
-from data_aug import RandomHorizontalFlip
+sys.path.append("/root/retinanet/data_aug")
+#sys.path.append("/home/fregu856/retinanet/data_aug")
+from data_aug import RandomHorizontalFlip, RandomHSV, RandomScale, RandomTranslate
 
 import torch
 import torch.utils.data
@@ -51,31 +51,33 @@ def draw_2d_polys_no_text(img, polys):
 # debug visualization helper functions END
 ################################################################################
 
-def bboxes_xxyy_2_xyxy(bboxes_xxyy):
-    # (bboxes_xxyy is an array of shape (num_bboxes, 4), (x_min, x_max, y_min, y_max))
+def bboxes_xxyyc_2_xyxyc(bboxes_xxyyc):
+    # (bboxes_xxyyc is an array of shape (num_bboxes, 5), (x_min, x_max, y_min, y_max, class_label))
 
-    bboxes_xyxy = np.zeros(bboxes_xxyy.shape, dtype=bboxes_xxyy.dtype)
+    bboxes_xyxyc = np.zeros(bboxes_xxyyc.shape, dtype=bboxes_xxyyc.dtype)
 
-    bboxes_xyxy[:, 0] = bboxes_xxyy[:, 0]
-    bboxes_xyxy[:, 1] = bboxes_xxyy[:, 2]
-    bboxes_xyxy[:, 2] = bboxes_xxyy[:, 1]
-    bboxes_xyxy[:, 3] = bboxes_xxyy[:, 3]
+    bboxes_xyxyc[:, 0] = bboxes_xxyyc[:, 0]
+    bboxes_xyxyc[:, 1] = bboxes_xxyyc[:, 2]
+    bboxes_xyxyc[:, 2] = bboxes_xxyyc[:, 1]
+    bboxes_xyxyc[:, 3] = bboxes_xxyyc[:, 3]
+    bboxes_xyxyc[:, 4] = bboxes_xxyyc[:, 4]
 
-    # (bboxes_xyxy is an array of shape (num_bboxes, 4), (x_min, y_min, x_max, y_max))
-    return bboxes_xyxy
+    # (bboxes_xyxyc is an array of shape (num_bboxes, 5), (x_min, y_min, x_max, y_max, class_label))
+    return bboxes_xyxyc
 
-def bboxes_xyxy_2_xxyy(bboxes_xyxy):
-    # (bboxes_xyxy is an array of shape (num_bboxes, 4), (x_min, y_min, x_max, y_max))
+def bboxes_xyxyc_2_xxyyc(bboxes_xyxyc):
+    # (bboxes_xyxyc is an array of shape (num_bboxes, 5), (x_min, y_min, x_max, y_max, class_label))
 
-    bboxes_xxyy = np.zeros(bboxes_xyxy.shape, dtype=bboxes_xyxy.dtype)
+    bboxes_xxyyc = np.zeros(bboxes_xyxyc.shape, dtype=bboxes_xyxyc.dtype)
 
-    bboxes_xxyy[:, 0] = bboxes_xyxy[:, 0]
-    bboxes_xxyy[:, 1] = bboxes_xyxy[:, 2]
-    bboxes_xxyy[:, 2] = bboxes_xyxy[:, 1]
-    bboxes_xxyy[:, 3] = bboxes_xyxy[:, 3]
+    bboxes_xxyyc[:, 0] = bboxes_xyxyc[:, 0]
+    bboxes_xxyyc[:, 1] = bboxes_xyxyc[:, 2]
+    bboxes_xxyyc[:, 2] = bboxes_xyxyc[:, 1]
+    bboxes_xxyyc[:, 3] = bboxes_xyxyc[:, 3]
+    bboxes_xxyyc[:, 4] = bboxes_xyxyc[:, 4]
 
-    # (bboxes_xxyy is an array of shape (num_bboxes, 4), (x_min, x_max, y_min, y_max))
-    return bboxes_xxyy
+    # (bboxes_xxyyc is an array of shape (num_bboxes, 5), (x_min, x_max, y_min, y_max, class_label))
+    return bboxes_xxyyc
 
 class BboxEncoder:
     # NOTE! based off of https://github.com/kuangliu/pytorch-retinanet/blob/master/encoder.py and https://github.com/kuangliu/pytorch-retinanet/blob/master/utils.py
@@ -602,7 +604,7 @@ class DatasetAugmentation(torch.utils.data.Dataset):
 # for i in range(10):
 #     _ = test.__getitem__(i)
 
-class DatasetMoreAugmentation(torch.utils.data.Dataset):
+class DatasetMoreAugmentation2(torch.utils.data.Dataset):
     def __init__(self, kitti_data_path, kitti_meta_path, type):
         self.img_dir = kitti_data_path + "/object/training/image_2/"
         self.label_dir = kitti_data_path + "/object/training/label_2/"
@@ -615,6 +617,9 @@ class DatasetMoreAugmentation(torch.utils.data.Dataset):
         self.img_width = 1242
 
         self.random_horizontal_flip = RandomHorizontalFlip(p=0.5)
+        self.random_hsv = RandomHSV(hue=10, saturation=20, brightness=20)
+        self.random_scale = RandomScale(scale=0.3)
+        self.random_translate = RandomTranslate(translate=0.2)
 
         self.bbox_encoder = BboxEncoder(img_h=self.img_height, img_w=self.img_width)
 
@@ -663,36 +668,87 @@ class DatasetMoreAugmentation(torch.utils.data.Dataset):
         img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
 
         gt_bboxes_xxyy = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = example["class_labels"] # (shape: (num_gt_objects, ))
+
+        gt_bboxes_xxyyc = np.zeros((gt_bboxes_xxyy.shape[0], 5), dtype=gt_bboxes_xxyy.dtype) # (shape: (num_gt_objects, 5), (x_min, x_max, y_min, y_max, class_label))
+        gt_bboxes_xxyyc[:, 0:4] = gt_bboxes_xxyy
+        gt_bboxes_xxyyc[:, 4] = gt_classes
 
         ########################################################################
         # data augmentation START:
         ########################################################################
-        # # # # # debug visualization:
-        bbox_polys = []
-        for i in range(gt_bboxes_xxyy.shape[0]):
-            bbox = gt_bboxes_xxyy[i]
-            bbox_poly = create2Dbbox_poly(bbox)
-            bbox_polys.append(bbox_poly)
-        img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
-        cv2.imshow("test", img_with_gt_bboxes)
-        cv2.waitKey(0)
-        # # # # #
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyy.shape[0]):
+        #     bbox = gt_bboxes_xxyy[i]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
 
         # flip the img and the labels with 0.5 probability:
-        img, gt_bboxes_xyxy = self.random_horizontal_flip(img, bboxes_xxyy_2_xyxy(gt_bboxes_xxyy))
-        gt_bboxes_xxyy = bboxes_xyxy_2_xxyy(gt_bboxes_xyxy)
+        img, gt_bboxes_xyxyc = self.random_horizontal_flip(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
 
-        # # # # # debug visualization:
-        bbox_polys = []
-        for i in range(gt_bboxes_xxyy.shape[0]):
-            bbox = gt_bboxes_xxyy[i]
-            bbox_poly = create2Dbbox_poly(bbox)
-            bbox_polys.append(bbox_poly)
-        img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
-        cv2.imshow("test", img_with_gt_bboxes)
-        cv2.waitKey(0)
-        # # # # #
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
 
+        # randomly modify the hue, saturation and brightness of the image:
+        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        img_hsv, gt_bboxes_xyxyc = self.random_hsv(img_hsv, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        # scale the image and the labels with a factor drawn from Uniform[1-scale, 1+scale]:
+        img, gt_bboxes_xyxyc = self.random_scale(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        # randomly translate the image and the labels:
+        img, gt_bboxes_xyxyc = self.random_translate(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
         ########################################################################
         # data augmentation END:
         ########################################################################
@@ -709,8 +765,18 @@ class DatasetMoreAugmentation(torch.utils.data.Dataset):
         ########################################################################
         # get ground truth:
         ########################################################################
+        gt_bboxes_xxyy = gt_bboxes_xxyyc[:, 0:4] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = gt_bboxes_xxyyc[:, 4] # (shape (num_gt_objects, ))
         gt_bboxes_xxyy = torch.from_numpy(gt_bboxes_xxyy) # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
-        gt_classes = torch.from_numpy(example["class_labels"]) # (shape (num_gt_objects, ))
+        gt_classes = torch.from_numpy(gt_classes) # (shape (num_gt_objects, ))
+
+        if gt_bboxes_xxyy.size(0) == 0: # (if 0 gt objects)
+            return self.__getitem__(index+1)
+
+        if gt_bboxes_xxyy.size() == torch.Size([4]): # (if 1 gt object)
+            gt_bboxes_xxyy = gt_bboxes_xxyy.unsqueeze(0)
+            gt_classes = torch.from_numpy(np.array([gt_classes.data]))
+
         label_regr, label_class = self.bbox_encoder.encode(gt_bboxes_xxyy, gt_classes)
         # (label_regr is a Tensor of shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
         # (label_class is a Tensor of shape: (num_anchors, ))
@@ -728,9 +794,199 @@ class DatasetMoreAugmentation(torch.utils.data.Dataset):
     def __len__(self):
         return self.num_examples
 
-test = DatasetMoreAugmentation("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="train")
-for i in range(10):
-    _ = test.__getitem__(i)
+class DatasetMoreAugmentation3(torch.utils.data.Dataset):
+    def __init__(self, kitti_data_path, kitti_meta_path, type):
+        self.img_dir = kitti_data_path + "/object/training/image_2/"
+        self.label_dir = kitti_data_path + "/object/training/label_2/"
+        self.calib_dir = kitti_data_path + "/object/training/calib/"
+
+        with open(kitti_meta_path + "/%s_img_ids.pkl" % type, "rb") as file: # (needed for python3)
+            img_ids = pickle.load(file)
+
+        self.img_height = 375
+        self.img_width = 1242
+
+        self.random_horizontal_flip = RandomHorizontalFlip(p=0.5)
+        self.random_hsv = RandomHSV(hue=10, saturation=20, brightness=20)
+        self.random_scale = RandomScale(scale=0.4)
+        self.random_translate = RandomTranslate(translate=0.3)
+
+        self.bbox_encoder = BboxEncoder(img_h=self.img_height, img_w=self.img_width)
+
+        self.num_classes = 4 # (car, pedestrian, cyclist, background)
+
+        self.examples = []
+        for img_id in img_ids:
+            example = {}
+            example["img_id"] = img_id
+
+            labels = LabelLoader2D3D(img_id, self.label_dir, ".txt", self.calib_dir, ".txt")
+
+            bboxes = np.zeros((len(labels), 4), dtype=np.float32)
+            class_labels = np.zeros((len(labels), ), dtype=np.float32)
+            counter = 0
+            for label in labels:
+                label_2d = label["label_2D"]
+                if label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
+                    bbox = label_2d["poly"]
+                    u_min = bbox[0, 0] # (left)
+                    u_max = bbox[1, 0] # (rigth)
+                    v_min = bbox[0, 1] # (top)
+                    v_max = bbox[2, 1] # (bottom)
+                    bboxes[counter] = np.array([u_min, u_max, v_min, v_max])
+
+                    class_labels[counter] = class_string_to_label[label_2d["class"]]
+
+                    counter += 1
+
+            bboxes = bboxes[0:counter]
+            class_labels = class_labels[0:counter]
+
+            example["bboxes"] = bboxes
+            example["class_labels"] = class_labels
+            self.examples.append(example)
+
+        self.num_examples = len(self.examples)
+
+    def __getitem__(self, index):
+        example = self.examples[index]
+
+        img_id = example["img_id"]
+
+        img_path = self.img_dir + img_id + ".png"
+        img = cv2.imread(img_path, -1)
+        img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
+
+        gt_bboxes_xxyy = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = example["class_labels"] # (shape: (num_gt_objects, ))
+
+        gt_bboxes_xxyyc = np.zeros((gt_bboxes_xxyy.shape[0], 5), dtype=gt_bboxes_xxyy.dtype) # (shape: (num_gt_objects, 5), (x_min, x_max, y_min, y_max, class_label))
+        gt_bboxes_xxyyc[:, 0:4] = gt_bboxes_xxyy
+        gt_bboxes_xxyyc[:, 4] = gt_classes
+
+        ########################################################################
+        # data augmentation START:
+        ########################################################################
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyy.shape[0]):
+        #     bbox = gt_bboxes_xxyy[i]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        # flip the img and the labels with 0.5 probability:
+        img, gt_bboxes_xyxyc = self.random_horizontal_flip(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        # randomly modify the hue, saturation and brightness of the image:
+        img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        img_hsv, gt_bboxes_xyxyc = self.random_hsv(img_hsv, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        img = cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        # scale the image and the labels with a factor drawn from Uniform[1-scale, 1+scale]:
+        img, gt_bboxes_xyxyc = self.random_scale(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        # randomly translate the image and the labels:
+        img, gt_bboxes_xyxyc = self.random_translate(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
+        gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+        ########################################################################
+        # data augmentation END:
+        ########################################################################
+
+        ########################################################################
+        # normalize the img:
+        ########################################################################
+        img = img/255.0
+        img = img - np.array([0.485, 0.456, 0.406])
+        img = img/np.array([0.229, 0.224, 0.225]) # (shape: (img_height, img_width, 3))
+        img = np.transpose(img, (2, 0, 1)) # (shape: (3, img_height, img_width))
+        img = img.astype(np.float32)
+
+        ########################################################################
+        # get ground truth:
+        ########################################################################
+        gt_bboxes_xxyy = gt_bboxes_xxyyc[:, 0:4] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = gt_bboxes_xxyyc[:, 4] # (shape (num_gt_objects, ))
+        gt_bboxes_xxyy = torch.from_numpy(gt_bboxes_xxyy) # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = torch.from_numpy(gt_classes) # (shape (num_gt_objects, ))
+
+        if gt_bboxes_xxyy.size(0) == 0: # (if 0 gt objects)
+            return self.__getitem__(index+1)
+
+        if gt_bboxes_xxyy.size() == torch.Size([4]): # (if 1 gt object)
+            gt_bboxes_xxyy = gt_bboxes_xxyy.unsqueeze(0)
+            gt_classes = torch.from_numpy(np.array([gt_classes.data]))
+
+        label_regr, label_class = self.bbox_encoder.encode(gt_bboxes_xxyy, gt_classes)
+        # (label_regr is a Tensor of shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class is a Tensor of shape: (num_anchors, ))
+
+        ########################################################################
+        # convert numpy -> torch:
+        ########################################################################
+        img = torch.from_numpy(img) # (shape: (3, img_height, img_width))
+
+        # (img has shape: (3, img_height, img_width))
+        # (label_regr has shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class has shape: (num_anchors, ))
+        return (img, label_regr, label_class)
+
+    def __len__(self):
+        return self.num_examples
+
+# test = DatasetMoreAugmentation2("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="train")
+# for i in range(10):
+#     _ = test.__getitem__(i)
 
 class DatasetEval(torch.utils.data.Dataset):
     def __init__(self, kitti_data_path, kitti_meta_path, type):
@@ -947,6 +1203,56 @@ class DatasetEvalSeq(torch.utils.data.Dataset):
         # (label_regr has shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
         # (label_class has shape: (num_anchors, ))
         return (img, label_regr, label_class, img_id)
+
+    def __len__(self):
+        return self.num_examples
+
+class DatasetTestSeq(torch.utils.data.Dataset):
+    def __init__(self, kitti_data_path, kitti_meta_path, sequence):
+        self.img_dir = kitti_data_path + "/tracking/testing/image_02/" + sequence + "/"
+        self.calib_path = kitti_meta_path + "/tracking/testing/calib/" + sequence + ".txt" # NOTE! NOTE! the data format for the calib files was sliightly different for tracking, so I manually modifed the 20 files and saved them in the kitti_meta folder
+
+        self.img_height = 375
+        self.img_width = 1242
+
+        img_ids = []
+        img_names = os.listdir(self.img_dir)
+        for img_name in img_names:
+            img_id = img_name.split(".png")[0]
+            img_ids.append(img_id)
+
+        self.examples = img_ids
+
+        self.num_examples = len(self.examples)
+
+    def __getitem__(self, index):
+        img_id = self.examples[index]
+
+        img_path = self.img_dir + img_id + ".png"
+        img = cv2.imread(img_path, -1)
+        img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
+
+        # # # # # # debug visualization:
+        # cv2.imshow("test", img)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        ########################################################################
+        # normalize the img:
+        ########################################################################
+        img = img/255.0
+        img = img - np.array([0.485, 0.456, 0.406])
+        img = img/np.array([0.229, 0.224, 0.225]) # (shape: (img_height, img_width, 3))
+        img = np.transpose(img, (2, 0, 1)) # (shape: (3, img_height, img_width))
+        img = img.astype(np.float32)
+
+        ########################################################################
+        # convert numpy -> torch:
+        ########################################################################
+        img = torch.from_numpy(img) # (shape: (3, img_height, img_width))
+
+        # (img has shape: (3, img_height, img_width))
+        return (img, img_id)
 
     def __len__(self):
         return self.num_examples

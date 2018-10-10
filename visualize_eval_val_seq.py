@@ -196,7 +196,7 @@ for img_name in img_names:
 #         data_dict = img_data_dict[img_id]
 #         pred_bbox_polys = data_dict["pred_bbox_polys"]
 #
-#         img_with_pred_bboxes = draw_2d_polys_no_text(img_with_pred_bboxes, pred_bbox_polys)
+#         img_with_pred_bboxes = draw_2d_polys(img_with_pred_bboxes, pred_bbox_polys)
 #
 #     img_with_pred_bboxes = cv2.resize(img_with_pred_bboxes, (img_width, img_height)) # (the image MUST have the size specified in VideoWriter)
 #
@@ -220,7 +220,7 @@ for img_id in sorted_img_ids:
         pred_bbox_polys = data_dict["pred_bbox_polys"]
         gt_bbox_polys = data_dict["gt_bbox_polys"]
 
-        img_with_pred_bboxes = draw_2d_polys_no_text(img_with_pred_bboxes, pred_bbox_polys)
+        img_with_pred_bboxes = draw_2d_polys(img_with_pred_bboxes, pred_bbox_polys)
         img_with_gt_bboxes = draw_2d_polys_no_text(img_with_gt_bboxes, gt_bbox_polys)
 
     img_with_pred_bboxes = cv2.resize(img_with_pred_bboxes, (img_width, img_height))
