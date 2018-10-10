@@ -158,24 +158,76 @@ for img_name in img_names:
 #
 #     out.write(img)
 
+# ################################################################################
+# # create a video of images with GT:
+# ################################################################################
+# out = cv2.VideoWriter("/root/retinanet/training_logs/model_eval_val_seq/eval_val_seq_%s_img_GT.avi" % sequence, cv2.VideoWriter_fourcc(*"MJPG"), 12, (img_width, img_height), True)
+#
+# for img_id in sorted_img_ids:
+#     print (img_id)
+#
+#     img = cv2.imread(img_dir + img_id + ".png", -1)
+#
+#     img_with_gt_bboxes = img
+#
+#     if img_id in img_data_dict:
+#         data_dict = img_data_dict[img_id]
+#         gt_bbox_polys = data_dict["gt_bbox_polys"]
+#
+#         img_with_gt_bboxes = draw_2d_polys_no_text(img_with_gt_bboxes, gt_bbox_polys)
+#
+#     img_with_gt_bboxes = cv2.resize(img_with_gt_bboxes, (img_width, img_height)) # (the image MUST have the size specified in VideoWriter)
+#
+#     out.write(img_with_gt_bboxes)
+
+# ################################################################################
+# # create a video of images with pred:
+# ################################################################################
+# out = cv2.VideoWriter("/root/retinanet/training_logs/model_eval_val_seq/eval_val_seq_%s_img_pred.avi" % sequence, cv2.VideoWriter_fourcc(*"MJPG"), 12, (img_width, img_height), True)
+#
+# for img_id in sorted_img_ids:
+#     print (img_id)
+#
+#     img = cv2.imread(img_dir + img_id + ".png", -1)
+#
+#     img_with_pred_bboxes = img
+#
+#     if img_id in img_data_dict:
+#         data_dict = img_data_dict[img_id]
+#         pred_bbox_polys = data_dict["pred_bbox_polys"]
+#
+#         img_with_pred_bboxes = draw_2d_polys_no_text(img_with_pred_bboxes, pred_bbox_polys)
+#
+#     img_with_pred_bboxes = cv2.resize(img_with_pred_bboxes, (img_width, img_height)) # (the image MUST have the size specified in VideoWriter)
+#
+#     out.write(img_with_pred_bboxes)
+
 ################################################################################
-# create a video of images with GT:
+# create a video of images with GT on top of pred:
 ################################################################################
-out = cv2.VideoWriter("/root/retinanet/training_logs/model_eval_val_seq/eval_val_seq_%s_img_GT.avi" % sequence, cv2.VideoWriter_fourcc(*"MJPG"), 12, (img_width, img_height), True)
+out = cv2.VideoWriter("/root/retinanet/training_logs/model_eval_val_seq/eval_val_seq_%s_img_GT_pred.avi" % sequence, cv2.VideoWriter_fourcc(*"MJPG"), 12, (img_width, 2*img_height), True)
 
 for img_id in sorted_img_ids:
     print (img_id)
 
     img = cv2.imread(img_dir + img_id + ".png", -1)
 
+    img_with_pred_bboxes = img
     img_with_gt_bboxes = img
 
     if img_id in img_data_dict:
         data_dict = img_data_dict[img_id]
+        pred_bbox_polys = data_dict["pred_bbox_polys"]
         gt_bbox_polys = data_dict["gt_bbox_polys"]
 
+        img_with_pred_bboxes = draw_2d_polys_no_text(img_with_pred_bboxes, pred_bbox_polys)
         img_with_gt_bboxes = draw_2d_polys_no_text(img_with_gt_bboxes, gt_bbox_polys)
 
-    img_with_gt_bboxes = cv2.resize(img_with_gt_bboxes, (img_width, img_height)) # (the image MUST have the size specified in VideoWriter)
+    img_with_pred_bboxes = cv2.resize(img_with_pred_bboxes, (img_width, img_height))
+    img_with_gt_bboxes = cv2.resize(img_with_gt_bboxes, (img_width, img_height))
 
-    out.write(img_with_gt_bboxes)
+    combined_img = np.zeros((2*img_height, img_width, 3), dtype=np.uint8)
+    combined_img[0:img_height] = img_with_gt_bboxes
+    combined_img[img_height:] = img_with_pred_bboxes
+
+    out.write(combined_img)
