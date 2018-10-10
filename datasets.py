@@ -3,7 +3,7 @@ from kittiloader import LabelLoader2D3D, LabelLoader2D3D_sequence # (this needs 
 import sys
 
 sys.path.append("/root/retinanet/data_aug")
-#sys.path.append("/home/fregu856/retinanet/data_aug")
+sys.path.append("/home/fregu856/retinanet/data_aug")
 from data_aug import RandomHorizontalFlip, RandomHSV, RandomScale, RandomTranslate
 
 import torch
@@ -1207,10 +1207,58 @@ class DatasetEvalSeq(torch.utils.data.Dataset):
     def __len__(self):
         return self.num_examples
 
+class DatasetTest(torch.utils.data.Dataset):
+    def __init__(self, kitti_data_path, kitti_meta_path):
+        self.img_dir = kitti_data_path + "/object/testing/image_2/"
+
+        self.img_height = 375
+        self.img_width = 1242
+
+        img_ids = []
+        img_names = os.listdir(self.img_dir)
+        for img_name in img_names:
+            img_id = img_name.split(".png")[0]
+            img_ids.append(img_id)
+
+        self.examples = img_ids
+
+        self.num_examples = len(self.examples)
+
+    def __getitem__(self, index):
+        img_id = self.examples[index]
+
+        img_path = self.img_dir + img_id + ".png"
+        img = cv2.imread(img_path, -1)
+        img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
+
+        # # # # # # debug visualization:
+        # cv2.imshow("test", img)
+        # cv2.waitKey(0)
+        # # # # # #
+
+        ########################################################################
+        # normalize the img:
+        ########################################################################
+        img = img/255.0
+        img = img - np.array([0.485, 0.456, 0.406])
+        img = img/np.array([0.229, 0.224, 0.225]) # (shape: (img_height, img_width, 3))
+        img = np.transpose(img, (2, 0, 1)) # (shape: (3, img_height, img_width))
+        img = img.astype(np.float32)
+
+        ########################################################################
+        # convert numpy -> torch:
+        ########################################################################
+        img = torch.from_numpy(img) # (shape: (3, img_height, img_width))
+
+        # (img has shape: (3, img_height, img_width))
+        return (img, img_id)
+
+    def __len__(self):
+        return self.num_examples
+
 class DatasetTestSeq(torch.utils.data.Dataset):
     def __init__(self, kitti_data_path, kitti_meta_path, sequence):
         self.img_dir = kitti_data_path + "/tracking/testing/image_02/" + sequence + "/"
-        self.calib_path = kitti_meta_path + "/tracking/testing/calib/" + sequence + ".txt" # NOTE! NOTE! the data format for the calib files was sliightly different for tracking, so I manually modifed the 20 files and saved them in the kitti_meta folder
 
         self.img_height = 375
         self.img_width = 1242
