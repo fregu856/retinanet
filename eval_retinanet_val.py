@@ -241,63 +241,63 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
         ########################################################################
         for i in range(outputs_regr.size()[0]):
             img_id = img_ids[i]
-            if img_id in ["000000", "000001", "000002", "000003", "000004", "000005", "000006", "000007", "000008", "000009", "000010", "000011", "000012", "000013", "000014", "000015", "000016", "000017", "000018", "000019", "000020", "000021"]:
-                output_regr = outputs_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
-                output_class = outputs_class[i, :, :].data.cpu() # (num_classes, num_anchors)
 
-                output_class = torch.t(output_class) # (num_anchors, num_classes)
+            output_regr = outputs_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
+            output_class = outputs_class[i, :, :].data.cpu() # (num_classes, num_anchors)
 
-                pred_bboxes, pred_max_scores, pred_class_labels = bbox_encoder.decode(output_regr, output_class)
-                # (pred_bboxes has shape (num_preds_after_nms, 4), (x, y, w, h))
-                # (pred_max_scores has shape (num_preds_after_nms, ))
-                # (pred_class_labels has shape (num_preds_after_nms, ))
+            output_class = torch.t(output_class) # (num_anchors, num_classes)
 
-                if pred_bboxes is not None:
-                    print ("Number of predicted bboxes:")
-                    print (pred_bboxes.size())
-                    print ("####")
+            pred_bboxes, pred_max_scores, pred_class_labels = bbox_encoder.decode(output_regr, output_class)
+            # (pred_bboxes has shape (num_preds_after_nms, 4), (x, y, w, h))
+            # (pred_max_scores has shape (num_preds_after_nms, ))
+            # (pred_class_labels has shape (num_preds_after_nms, ))
 
-                    pred_bboxes = pred_bboxes.data.cpu().numpy()
-                    pred_max_scores = pred_max_scores.data.cpu().numpy()
-                    pred_class_labels = pred_class_labels.data.cpu().numpy()
+            if pred_bboxes is not None:
+                print ("Number of predicted bboxes:")
+                print (pred_bboxes.size())
+                print ("####")
 
-                    label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
-                    label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
+                pred_bboxes = pred_bboxes.data.cpu().numpy()
+                pred_max_scores = pred_max_scores.data.cpu().numpy()
+                pred_class_labels = pred_class_labels.data.cpu().numpy()
 
-                    gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
-                    gt_bboxes = gt_bboxes.numpy()
+                label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
+                label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
 
-                    mask = label_class > 0
-                    gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
-                    gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
+                gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
+                gt_bboxes = gt_bboxes.numpy()
 
-                    img_dict = {}
-                    img_dict["pred_bboxes"] = pred_bboxes
-                    img_dict["pred_max_scores"] = pred_max_scores
-                    img_dict["pred_class_labels"] = pred_class_labels
-                    img_dict["gt_bboxes"] = gt_bboxes
-                    img_dict["gt_class_labels"] = gt_class_labels
+                mask = label_class > 0
+                gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
+                gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
 
-                    eval_dict[img_id] = img_dict
-                else:
-                    label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
-                    label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
+                img_dict = {}
+                img_dict["pred_bboxes"] = pred_bboxes
+                img_dict["pred_max_scores"] = pred_max_scores
+                img_dict["pred_class_labels"] = pred_class_labels
+                img_dict["gt_bboxes"] = gt_bboxes
+                img_dict["gt_class_labels"] = gt_class_labels
 
-                    gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
-                    gt_bboxes = gt_bboxes.numpy()
+                eval_dict[img_id] = img_dict
+            else:
+                label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
+                label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
 
-                    mask = label_class > 0
-                    gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
-                    gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
+                gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
+                gt_bboxes = gt_bboxes.numpy()
 
-                    img_dict = {}
-                    img_dict["pred_bboxes"] = None
-                    img_dict["pred_max_scores"] = None
-                    img_dict["pred_class_labels"] = None
-                    img_dict["gt_bboxes"] = gt_bboxes
-                    img_dict["gt_class_labels"] = gt_class_labels
+                mask = label_class > 0
+                gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
+                gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
 
-                    eval_dict[img_id] = img_dict
+                img_dict = {}
+                img_dict["pred_bboxes"] = None
+                img_dict["pred_max_scores"] = None
+                img_dict["pred_class_labels"] = None
+                img_dict["gt_bboxes"] = gt_bboxes
+                img_dict["gt_class_labels"] = gt_class_labels
+
+                eval_dict[img_id] = img_dict
 
         ########################################################################
         # # compute the regression loss:

@@ -45,7 +45,7 @@ for img_name in img_names:
     training_img_ids.append(img_id)
 
 for img_id in training_img_ids:
-    print img_id
+    print (img_id)
 
     img_label_file_path = results_data_dir + img_id + ".txt"
     with open(img_label_file_path, "w") as img_label_file:

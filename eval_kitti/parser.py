@@ -5,7 +5,7 @@ import os
 import numpy as np
 
 # classes = ['car', 'pedestrian', 'cyclist', 'van', 'truck', 'person_sitting', 'tram']
-classes = ['car']
+classes = ['car', 'pedestrian', 'cyclist']
 difficulties = ['easy', 'moderate', 'hard']
 params = ['detection', 'detection_ground', 'detection_3d']
 
