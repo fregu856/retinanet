@@ -64,7 +64,7 @@ img_dir = data_dir + "image_2/"
 bbox_encoder = BboxEncoder(img_h=img_height, img_w=img_width)
 
 # NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! # NOTE!
-with open("/home/fregu856/retinanet/training_logs/model_8_2/eval_dict_train_50.pkl", "rb") as file:
+with open("/home/fregu856/retinanet/training_logs/model_8_2/eval_dict_train_150.pkl", "rb") as file:
     eval_dict = pickle.load(file)
 
 for img_id in eval_dict:
@@ -75,49 +75,62 @@ for img_id in eval_dict:
 
         img = cv2.imread(img_dir + img_id + ".png", -1)
 
-        pred_bboxes_xywh = torch.from_numpy(img_dict["pred_bboxes"])
-        pred_probs = img_dict["pred_max_scores"]
-        pred_class_labels = img_dict["pred_class_labels"]
-        pred_bboxes_xxyy = bbox_encoder._xywh_2_xxyy(pred_bboxes_xywh).numpy()
+        if img_dict["pred_bboxes"] is not None:
+            pred_bboxes_xywh = torch.from_numpy(img_dict["pred_bboxes"])
+            pred_probs = img_dict["pred_max_scores"]
+            pred_class_labels = img_dict["pred_class_labels"]
+            if pred_bboxes_xywh.size() == torch.Size([4]):
+                pred_bboxes_xywh = pred_bboxes_xywh.unsqueeze(0)
+                pred_probs = np.array([pred_probs])
+                pred_class_labels = np.array([pred_class_labels])
+            pred_bboxes_xxyy = bbox_encoder._xywh_2_xxyy(pred_bboxes_xywh).numpy()
+
+            pred_bbox_polys = []
+            for i in range(pred_bboxes_xxyy.shape[0]):
+                pred_bbox_xxyy = pred_bboxes_xxyy[i]
+                pred_prob = pred_probs[i]
+                pred_class_label = pred_class_labels[i]
+
+                pred_bbox_poly = create2Dbbox_poly(pred_bbox_xxyy)
+
+                if pred_class_label == 1: # (Car)
+                    pred_bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
+                elif pred_class_label == 2: # (Pedestrian)
+                    pred_bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
+                elif pred_class_label == 3: # (Cyclist)
+                    pred_bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
+
+                pred_bbox_poly["prob"] = pred_prob
+
+                pred_bbox_polys.append(pred_bbox_poly)
+        else:
+            pred_bbox_polys = []
 
         gt_bboxes_xywh = torch.from_numpy(img_dict["gt_bboxes"])
-        gt_class_labels = img_dict["gt_class_labels"]
-        gt_bboxes_xxyy = bbox_encoder._xywh_2_xxyy(gt_bboxes_xywh).numpy()
+        if gt_bboxes_xywh.size(0) > 0:
+            gt_class_labels = img_dict["gt_class_labels"]
+            if gt_bboxes_xywh.size() == torch.Size([4]):
+                gt_bboxes_xywh = gt_bboxes_xywh.unsqueeze(0)
+                gt_class_labels = np.array([gt_class_labels])
+            gt_bboxes_xxyy = bbox_encoder._xywh_2_xxyy(gt_bboxes_xywh).numpy()
 
-        pred_bbox_polys = []
-        for i in range(pred_bboxes_xxyy.shape[0]):
-            pred_bbox_xxyy = pred_bboxes_xxyy[i]
-            pred_prob = pred_probs[i]
-            pred_class_label = pred_class_labels[i]
+            gt_bbox_polys = []
+            for i in range(gt_bboxes_xxyy.shape[0]):
+                gt_bbox_xxyy = gt_bboxes_xxyy[i]
+                gt_class_label = gt_class_labels[i]
 
-            pred_bbox_poly = create2Dbbox_poly(pred_bbox_xxyy)
+                gt_bbox_poly = create2Dbbox_poly(gt_bbox_xxyy)
 
-            if pred_class_label == 0: # (Car)
-                pred_bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
-            elif pred_class_label == 1: # (Pedestrian)
-                pred_bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
-            elif pred_class_label == 2: # (Cyclist)
-                pred_bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
+                if gt_class_label == 1: # (Car)
+                    gt_bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
+                elif gt_class_label == 2: # (Pedestrian)
+                    gt_bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
+                elif gt_class_label == 3: # (Cyclist)
+                    gt_bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
 
-            pred_bbox_poly["prob"] = pred_prob
-
-            pred_bbox_polys.append(pred_bbox_poly)
-
-        gt_bbox_polys = []
-        for i in range(gt_bboxes_xxyy.shape[0]):
-            gt_bbox_xxyy = gt_bboxes_xxyy[i]
-            gt_class_label = gt_class_labels[i]
-
-            gt_bbox_poly = create2Dbbox_poly(gt_bbox_xxyy)
-
-            if gt_class_label == 0: # (Car)
-                gt_bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
-            elif gt_class_label == 1: # (Pedestrian)
-                gt_bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
-            elif gt_class_label == 2: # (Cyclist)
-                gt_bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
-
-            gt_bbox_polys.append(gt_bbox_poly)
+                gt_bbox_polys.append(gt_bbox_poly)
+        else:
+            gt_bbox_polys = []
 
         img_with_pred_bboxes = draw_2d_polys(img, pred_bbox_polys)
         img_with_pred_bboxes = cv2.resize(img_with_pred_bboxes, (img_width, img_height))

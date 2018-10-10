@@ -94,11 +94,11 @@ for img_id in eval_dict:
 
             pred_bbox_poly = create2Dbbox_poly(pred_bbox_xxyy)
 
-            if pred_class_label == 0: # (Car)
+            if pred_class_label == 1: # (Car)
                 pred_bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
-            elif pred_class_label == 1: # (Pedestrian)
+            elif pred_class_label == 2: # (Pedestrian)
                 pred_bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
-            elif pred_class_label == 2: # (Cyclist)
+            elif pred_class_label == 3: # (Cyclist)
                 pred_bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
 
             pred_bbox_poly["prob"] = pred_prob
@@ -122,11 +122,11 @@ for img_id in eval_dict:
 
             gt_bbox_poly = create2Dbbox_poly(gt_bbox_xxyy)
 
-            if gt_class_label == 0: # (Car)
+            if gt_class_label == 1: # (Car)
                 gt_bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
-            elif gt_class_label == 1: # (Pedestrian)
+            elif gt_class_label == 2: # (Pedestrian)
                 gt_bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
-            elif gt_class_label == 2: # (Cyclist)
+            elif gt_class_label == 3: # (Cyclist)
                 gt_bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
 
             gt_bbox_polys.append(gt_bbox_poly)

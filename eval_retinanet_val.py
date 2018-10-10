@@ -201,7 +201,7 @@ lambda_value = 100.0 # (loss weight)
 lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_8_2/checkpoints/model_8_2_epoch_50.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_8_2/checkpoints/model_8_2_epoch_150.pth"))
 
 num_classes = network.num_classes
 
@@ -275,6 +275,25 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
                     img_dict["pred_bboxes"] = pred_bboxes
                     img_dict["pred_max_scores"] = pred_max_scores
                     img_dict["pred_class_labels"] = pred_class_labels
+                    img_dict["gt_bboxes"] = gt_bboxes
+                    img_dict["gt_class_labels"] = gt_class_labels
+
+                    eval_dict[img_id] = img_dict
+                else:
+                    label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
+                    label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
+
+                    gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
+                    gt_bboxes = gt_bboxes.numpy()
+
+                    mask = label_class > 0
+                    gt_bboxes = gt_bboxes[mask, :] # (shape: (num_gt_objects, 4))
+                    gt_class_labels = label_class[mask] # (shape: (num_gt_objects, ))
+
+                    img_dict = {}
+                    img_dict["pred_bboxes"] = None
+                    img_dict["pred_max_scores"] = None
+                    img_dict["pred_class_labels"] = None
                     img_dict["gt_bboxes"] = gt_bboxes
                     img_dict["gt_class_labels"] = gt_class_labels
 
