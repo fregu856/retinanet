@@ -2738,7 +2738,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "8_2"
+model_id = "8_2_"
 
 num_epochs = 1000
 batch_size = 16

@@ -1,5 +1,11 @@
 from kittiloader import LabelLoader2D3D, LabelLoader2D3D_sequence # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 
+import sys
+
+# sys.path.append("/root/retinanet/data_aug")
+sys.path.append("/home/fregu856/retinanet/data_aug")
+from data_aug import RandomHorizontalFlip
+
 import torch
 import torch.utils.data
 import torch.nn.functional as F
@@ -16,7 +22,7 @@ class_string_to_label = {"Car": 1,
                          "Cyclist": 3} # (background: 0)
 
 ################################################################################
-# debug helper functions START
+# debug visualization helper functions START
 ################################################################################
 def create2Dbbox_poly(bbox2D):
     u_min = bbox2D[0] # (left)
@@ -42,8 +48,34 @@ def draw_2d_polys_no_text(img, polys):
 
     return img
 ################################################################################
-# debug helper functions END
+# debug visualization helper functions END
 ################################################################################
+
+def bboxes_xxyy_2_xyxy(bboxes_xxyy):
+    # (bboxes_xxyy is an array of shape (num_bboxes, 4), (x_min, x_max, y_min, y_max))
+
+    bboxes_xyxy = np.zeros(bboxes_xxyy.shape, dtype=bboxes_xxyy.dtype)
+
+    bboxes_xyxy[:, 0] = bboxes_xxyy[:, 0]
+    bboxes_xyxy[:, 1] = bboxes_xxyy[:, 2]
+    bboxes_xyxy[:, 2] = bboxes_xxyy[:, 1]
+    bboxes_xyxy[:, 3] = bboxes_xxyy[:, 3]
+
+    # (bboxes_xyxy is an array of shape (num_bboxes, 4), (x_min, y_min, x_max, y_max))
+    return bboxes_xyxy
+
+def bboxes_xyxy_2_xxyy(bboxes_xyxy):
+    # (bboxes_xyxy is an array of shape (num_bboxes, 4), (x_min, y_min, x_max, y_max))
+
+    bboxes_xxyy = np.zeros(bboxes_xyxy.shape, dtype=bboxes_xyxy.dtype)
+
+    bboxes_xxyy[:, 0] = bboxes_xyxy[:, 0]
+    bboxes_xxyy[:, 1] = bboxes_xyxy[:, 2]
+    bboxes_xxyy[:, 2] = bboxes_xyxy[:, 1]
+    bboxes_xxyy[:, 3] = bboxes_xyxy[:, 3]
+
+    # (bboxes_xxyy is an array of shape (num_bboxes, 4), (x_min, x_max, y_min, y_max))
+    return bboxes_xxyy
 
 class BboxEncoder:
     # NOTE! based off of https://github.com/kuangliu/pytorch-retinanet/blob/master/encoder.py and https://github.com/kuangliu/pytorch-retinanet/blob/master/utils.py
@@ -479,7 +511,7 @@ class DatasetAugmentation(torch.utils.data.Dataset):
             counter = 0
             for label in labels:
                 label_2d = label["label_2D"]
-                if label_2d["truncated"] <= 0.50 and label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
+                if label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
                     bbox = label_2d["poly"]
                     u_min = bbox[0, 0] # (left)
                     u_max = bbox[1, 0] # (rigth)
@@ -570,6 +602,136 @@ class DatasetAugmentation(torch.utils.data.Dataset):
 # for i in range(10):
 #     _ = test.__getitem__(i)
 
+class DatasetMoreAugmentation(torch.utils.data.Dataset):
+    def __init__(self, kitti_data_path, kitti_meta_path, type):
+        self.img_dir = kitti_data_path + "/object/training/image_2/"
+        self.label_dir = kitti_data_path + "/object/training/label_2/"
+        self.calib_dir = kitti_data_path + "/object/training/calib/"
+
+        with open(kitti_meta_path + "/%s_img_ids.pkl" % type, "rb") as file: # (needed for python3)
+            img_ids = pickle.load(file)
+
+        self.img_height = 375
+        self.img_width = 1242
+
+        self.random_horizontal_flip = RandomHorizontalFlip(p=0.5)
+
+        self.bbox_encoder = BboxEncoder(img_h=self.img_height, img_w=self.img_width)
+
+        self.num_classes = 4 # (car, pedestrian, cyclist, background)
+
+        self.examples = []
+        for img_id in img_ids:
+            example = {}
+            example["img_id"] = img_id
+
+            labels = LabelLoader2D3D(img_id, self.label_dir, ".txt", self.calib_dir, ".txt")
+
+            bboxes = np.zeros((len(labels), 4), dtype=np.float32)
+            class_labels = np.zeros((len(labels), ), dtype=np.float32)
+            counter = 0
+            for label in labels:
+                label_2d = label["label_2D"]
+                if label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
+                    bbox = label_2d["poly"]
+                    u_min = bbox[0, 0] # (left)
+                    u_max = bbox[1, 0] # (rigth)
+                    v_min = bbox[0, 1] # (top)
+                    v_max = bbox[2, 1] # (bottom)
+                    bboxes[counter] = np.array([u_min, u_max, v_min, v_max])
+
+                    class_labels[counter] = class_string_to_label[label_2d["class"]]
+
+                    counter += 1
+
+            bboxes = bboxes[0:counter]
+            class_labels = class_labels[0:counter]
+
+            example["bboxes"] = bboxes
+            example["class_labels"] = class_labels
+            self.examples.append(example)
+
+        self.num_examples = len(self.examples)
+
+    def __getitem__(self, index):
+        example = self.examples[index]
+
+        img_id = example["img_id"]
+
+        img_path = self.img_dir + img_id + ".png"
+        img = cv2.imread(img_path, -1)
+        img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
+
+        gt_bboxes_xxyy = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+
+        ########################################################################
+        # data augmentation START:
+        ########################################################################
+        # # # # # debug visualization:
+        bbox_polys = []
+        for i in range(gt_bboxes_xxyy.shape[0]):
+            bbox = gt_bboxes_xxyy[i]
+            bbox_poly = create2Dbbox_poly(bbox)
+            bbox_polys.append(bbox_poly)
+        img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        cv2.imshow("test", img_with_gt_bboxes)
+        cv2.waitKey(0)
+        # # # # #
+
+        # flip the img and the labels with 0.5 probability:
+        img, gt_bboxes_xyxy = self.random_horizontal_flip(img, bboxes_xxyy_2_xyxy(gt_bboxes_xxyy))
+        gt_bboxes_xxyy = bboxes_xyxy_2_xxyy(gt_bboxes_xyxy)
+
+        # # # # # debug visualization:
+        bbox_polys = []
+        for i in range(gt_bboxes_xxyy.shape[0]):
+            bbox = gt_bboxes_xxyy[i]
+            bbox_poly = create2Dbbox_poly(bbox)
+            bbox_polys.append(bbox_poly)
+        img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        cv2.imshow("test", img_with_gt_bboxes)
+        cv2.waitKey(0)
+        # # # # #
+
+        ########################################################################
+        # data augmentation END:
+        ########################################################################
+
+        ########################################################################
+        # normalize the img:
+        ########################################################################
+        img = img/255.0
+        img = img - np.array([0.485, 0.456, 0.406])
+        img = img/np.array([0.229, 0.224, 0.225]) # (shape: (img_height, img_width, 3))
+        img = np.transpose(img, (2, 0, 1)) # (shape: (3, img_height, img_width))
+        img = img.astype(np.float32)
+
+        ########################################################################
+        # get ground truth:
+        ########################################################################
+        gt_bboxes_xxyy = torch.from_numpy(gt_bboxes_xxyy) # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = torch.from_numpy(example["class_labels"]) # (shape (num_gt_objects, ))
+        label_regr, label_class = self.bbox_encoder.encode(gt_bboxes_xxyy, gt_classes)
+        # (label_regr is a Tensor of shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class is a Tensor of shape: (num_anchors, ))
+
+        ########################################################################
+        # convert numpy -> torch:
+        ########################################################################
+        img = torch.from_numpy(img) # (shape: (3, img_height, img_width))
+
+        # (img has shape: (3, img_height, img_width))
+        # (label_regr has shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class has shape: (num_anchors, ))
+        return (img, label_regr, label_class)
+
+    def __len__(self):
+        return self.num_examples
+
+test = DatasetMoreAugmentation("/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", type="train")
+for i in range(10):
+    _ = test.__getitem__(i)
+
 class DatasetEval(torch.utils.data.Dataset):
     def __init__(self, kitti_data_path, kitti_meta_path, type):
         self.img_dir = kitti_data_path + "/object/training/image_2/"
@@ -598,7 +760,7 @@ class DatasetEval(torch.utils.data.Dataset):
             counter = 0
             for label in labels:
                 label_2d = label["label_2D"]
-                if label_2d["truncated"] <= 0.50 and label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
+                if label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
                     bbox = label_2d["poly"]
                     u_min = bbox[0, 0] # (left)
                     u_max = bbox[1, 0] # (rigth)
@@ -712,7 +874,7 @@ class DatasetEvalSeq(torch.utils.data.Dataset):
             counter = 0
             for label in labels:
                 label_2d = label["label_2D"]
-                if label_2d["truncated"] <= 0.50 and label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
+                if label_2d["class"] in ["Car", "Pedestrian", "Cyclist"]:
                     bbox = label_2d["poly"]
                     u_min = bbox[0, 0] # (left)
                     u_max = bbox[1, 0] # (rigth)
