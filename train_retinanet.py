@@ -2738,7 +2738,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "8_2_5_3"
+model_id = "9_3"
 
 num_epochs = 1000
 batch_size = 16
@@ -2852,40 +2852,17 @@ for epoch in range(num_epochs):
         ########################################################################
         # # compute the classification loss:
         ########################################################################
-        mask_background = labels_class == 0
-        mask_background = mask_background.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-        outputs_class_background = outputs_class[mask_background, :] # (shape: (num_background_anchors, num_classes))
-        labels_class_background = labels_class[mask_background] # (shape: (num_background_anchors, ))
+        mask = labels_class > -1
+        mask = mask.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
+        outputs_class = outputs_class[mask, :] # (shape: (num_anchors, num_classes))
+        labels_class = labels_class[mask] # (shape: (num_anchors, ))
 
-        mask_foreground = labels_class > 0
-        mask_foreground = mask_foreground.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-        outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_background_anchors, num_classes))
-        labels_class_foreground = labels_class[mask_foreground] # (shape: (num_background_anchors, ))
-
-        num_foreground_anchors = float(labels_class_foreground.size()[0])
-        num_background_anchors = float(labels_class_background.size()[0])
-
-        if step == 0:
-            print ("num_foreground_anchors:")
-            print (num_foreground_anchors)
-            print ("num_background_anchors:")
-            print (num_background_anchors)
-
-        labels_class_onehot_foreground = onehot_embed(labels_class_foreground, num_classes) # (shape: (num_class_anchors, num_classes))
-        CE_foreground = -labels_class_onehot_foreground*F.log_softmax(outputs_class_foreground, dim=1) # (shape: (num_class_anchors, num_classes))
-        weight_foreground = labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
-        loss_class_foreground = weight_foreground*CE_foreground # (shape: (num_class_anchors, num_classes))
-        loss_class_foreground, _ = torch.max(loss_class_foreground, dim=1) # (shape: (num_class_anchors, ))
-        loss_class_foreground = torch.mean(loss_class_foreground)
-
-        labels_class_onehot_background = onehot_embed(labels_class_background, num_classes) # (shape: (num_class_anchors, num_classes))
-        CE_background = -labels_class_onehot_background*F.log_softmax(outputs_class_background, dim=1) # (shape: (num_class_anchors, num_classes))
-        weight_background = labels_class_onehot_background*torch.pow(1 - F.softmax(outputs_class_background, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
-        loss_class_background = weight_background*CE_background # (shape: (num_class_anchors, num_classes))
-        loss_class_background, _ = torch.max(loss_class_background, dim=1) # (shape: (num_class_anchors, ))
-        loss_class_background = torch.mean(loss_class_background)
-
-        loss_class = loss_class_foreground + lambda_value_neg*loss_class_background
+        labels_class_onehot = onehot_embed(labels_class, num_classes) # (shape: (num_class_anchors, num_classes))
+        CE = -labels_class_onehot*F.log_softmax(outputs_class, dim=1) # (shape: (num_class_anchors, num_classes))
+        weight = labels_class_onehot*torch.pow(1 - F.softmax(outputs_class, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+        loss_class = weight*CE # (shape: (num_class_anchors, num_classes))
+        loss_class, _ = torch.max(loss_class, dim=1) # (shape: (num_class_anchors, ))
+        loss_class = torch.mean(loss_class)
 
         loss_class_value = loss_class.data.cpu().numpy()
         batch_losses_class.append(loss_class_value)
@@ -2903,6 +2880,61 @@ for epoch in range(num_epochs):
             print ("labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
             print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
             print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
+
+        # ########################################################################
+        # # # compute the classification loss:
+        # ########################################################################
+        # mask_background = labels_class == 0
+        # mask_background = mask_background.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
+        # outputs_class_background = outputs_class[mask_background, :] # (shape: (num_background_anchors, num_classes))
+        # labels_class_background = labels_class[mask_background] # (shape: (num_background_anchors, ))
+        #
+        # mask_foreground = labels_class > 0
+        # mask_foreground = mask_foreground.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
+        # outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_background_anchors, num_classes))
+        # labels_class_foreground = labels_class[mask_foreground] # (shape: (num_background_anchors, ))
+        #
+        # num_foreground_anchors = float(labels_class_foreground.size()[0])
+        # num_background_anchors = float(labels_class_background.size()[0])
+        #
+        # if step == 0:
+        #     print ("num_foreground_anchors:")
+        #     print (num_foreground_anchors)
+        #     print ("num_background_anchors:")
+        #     print (num_background_anchors)
+        #
+        # labels_class_onehot_foreground = onehot_embed(labels_class_foreground, num_classes) # (shape: (num_class_anchors, num_classes))
+        # CE_foreground = -labels_class_onehot_foreground*F.log_softmax(outputs_class_foreground, dim=1) # (shape: (num_class_anchors, num_classes))
+        # weight_foreground = labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+        # loss_class_foreground = weight_foreground*CE_foreground # (shape: (num_class_anchors, num_classes))
+        # loss_class_foreground, _ = torch.max(loss_class_foreground, dim=1) # (shape: (num_class_anchors, ))
+        # loss_class_foreground = torch.mean(loss_class_foreground)
+        #
+        # labels_class_onehot_background = onehot_embed(labels_class_background, num_classes) # (shape: (num_class_anchors, num_classes))
+        # CE_background = -labels_class_onehot_background*F.log_softmax(outputs_class_background, dim=1) # (shape: (num_class_anchors, num_classes))
+        # weight_background = labels_class_onehot_background*torch.pow(1 - F.softmax(outputs_class_background, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+        # loss_class_background = weight_background*CE_background # (shape: (num_class_anchors, num_classes))
+        # loss_class_background, _ = torch.max(loss_class_background, dim=1) # (shape: (num_class_anchors, ))
+        # loss_class_background = torch.mean(loss_class_background)
+        #
+        # loss_class = loss_class_foreground + lambda_value_neg*loss_class_background
+        #
+        # loss_class_value = loss_class.data.cpu().numpy()
+        # batch_losses_class.append(loss_class_value)
+        #
+        # if step == 0:
+        #     print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
+        #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
+        #     print (outputs_class.data.cpu().numpy().shape)
+        #     print ("labels_class.data.cpu().numpy():")
+        #     print (labels_class.data.cpu().numpy())
+        #     print (labels_class.data.cpu().numpy().shape)
+        #     print ("F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
+        #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
+        #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
+        #     print ("labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
+        #     print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
+        #     print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
 
         ########################################################################
         # # compute the total loss:
@@ -3027,40 +3059,17 @@ for epoch in range(num_epochs):
             ########################################################################
             # # compute the classification loss:
             ########################################################################
-            mask_background = labels_class == 0
-            mask_background = mask_background.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-            outputs_class_background = outputs_class[mask_background, :] # (shape: (num_background_anchors, num_classes))
-            labels_class_background = labels_class[mask_background] # (shape: (num_background_anchors, ))
+            mask = labels_class > -1
+            mask = mask.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
+            outputs_class = outputs_class[mask, :] # (shape: (num_anchors, num_classes))
+            labels_class = labels_class[mask] # (shape: (num_anchors, ))
 
-            mask_foreground = labels_class > 0
-            mask_foreground = mask_foreground.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-            outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_background_anchors, num_classes))
-            labels_class_foreground = labels_class[mask_foreground] # (shape: (num_background_anchors, ))
-
-            num_foreground_anchors = float(labels_class_foreground.size()[0])
-            num_background_anchors = float(labels_class_background.size()[0])
-
-            if step == 0:
-                print ("num_foreground_anchors:")
-                print (num_foreground_anchors)
-                print ("num_background_anchors:")
-                print (num_background_anchors)
-
-            labels_class_onehot_foreground = onehot_embed(labels_class_foreground, num_classes) # (shape: (num_class_anchors, num_classes))
-            CE_foreground = -labels_class_onehot_foreground*F.log_softmax(outputs_class_foreground, dim=1) # (shape: (num_class_anchors, num_classes))
-            weight_foreground = labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
-            loss_class_foreground = weight_foreground*CE_foreground # (shape: (num_class_anchors, num_classes))
-            loss_class_foreground, _ = torch.max(loss_class_foreground, dim=1) # (shape: (num_class_anchors, ))
-            loss_class_foreground = torch.mean(loss_class_foreground)
-
-            labels_class_onehot_background = onehot_embed(labels_class_background, num_classes) # (shape: (num_class_anchors, num_classes))
-            CE_background = -labels_class_onehot_background*F.log_softmax(outputs_class_background, dim=1) # (shape: (num_class_anchors, num_classes))
-            weight_background = labels_class_onehot_background*torch.pow(1 - F.softmax(outputs_class_background, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
-            loss_class_background = weight_background*CE_background # (shape: (num_class_anchors, num_classes))
-            loss_class_background, _ = torch.max(loss_class_background, dim=1) # (shape: (num_class_anchors, ))
-            loss_class_background = torch.mean(loss_class_background)
-
-            loss_class = loss_class_foreground + lambda_value_neg*loss_class_background
+            labels_class_onehot = onehot_embed(labels_class, num_classes) # (shape: (num_class_anchors, num_classes))
+            CE = -labels_class_onehot*F.log_softmax(outputs_class, dim=1) # (shape: (num_class_anchors, num_classes))
+            weight = labels_class_onehot*torch.pow(1 - F.softmax(outputs_class, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+            loss_class = weight*CE # (shape: (num_class_anchors, num_classes))
+            loss_class, _ = torch.max(loss_class, dim=1) # (shape: (num_class_anchors, ))
+            loss_class = torch.mean(loss_class)
 
             loss_class_value = loss_class.data.cpu().numpy()
             batch_losses_class.append(loss_class_value)
@@ -3078,6 +3087,61 @@ for epoch in range(num_epochs):
                 print ("labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
                 print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
                 print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
+
+            # ########################################################################
+            # # # compute the classification loss:
+            # ########################################################################
+            # mask_background = labels_class == 0
+            # mask_background = mask_background.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
+            # outputs_class_background = outputs_class[mask_background, :] # (shape: (num_background_anchors, num_classes))
+            # labels_class_background = labels_class[mask_background] # (shape: (num_background_anchors, ))
+            #
+            # mask_foreground = labels_class > 0
+            # mask_foreground = mask_foreground.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
+            # outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_background_anchors, num_classes))
+            # labels_class_foreground = labels_class[mask_foreground] # (shape: (num_background_anchors, ))
+            #
+            # num_foreground_anchors = float(labels_class_foreground.size()[0])
+            # num_background_anchors = float(labels_class_background.size()[0])
+            #
+            # if step == 0:
+            #     print ("num_foreground_anchors:")
+            #     print (num_foreground_anchors)
+            #     print ("num_background_anchors:")
+            #     print (num_background_anchors)
+            #
+            # labels_class_onehot_foreground = onehot_embed(labels_class_foreground, num_classes) # (shape: (num_class_anchors, num_classes))
+            # CE_foreground = -labels_class_onehot_foreground*F.log_softmax(outputs_class_foreground, dim=1) # (shape: (num_class_anchors, num_classes))
+            # weight_foreground = labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+            # loss_class_foreground = weight_foreground*CE_foreground # (shape: (num_class_anchors, num_classes))
+            # loss_class_foreground, _ = torch.max(loss_class_foreground, dim=1) # (shape: (num_class_anchors, ))
+            # loss_class_foreground = torch.mean(loss_class_foreground)
+            #
+            # labels_class_onehot_background = onehot_embed(labels_class_background, num_classes) # (shape: (num_class_anchors, num_classes))
+            # CE_background = -labels_class_onehot_background*F.log_softmax(outputs_class_background, dim=1) # (shape: (num_class_anchors, num_classes))
+            # weight_background = labels_class_onehot_background*torch.pow(1 - F.softmax(outputs_class_background, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+            # loss_class_background = weight_background*CE_background # (shape: (num_class_anchors, num_classes))
+            # loss_class_background, _ = torch.max(loss_class_background, dim=1) # (shape: (num_class_anchors, ))
+            # loss_class_background = torch.mean(loss_class_background)
+            #
+            # loss_class = loss_class_foreground + lambda_value_neg*loss_class_background
+            #
+            # loss_class_value = loss_class.data.cpu().numpy()
+            # batch_losses_class.append(loss_class_value)
+            #
+            # if step == 0:
+            #     print ("F.softmax(outputs_class, dim=1).data.cpu().numpy():")
+            #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy())
+            #     print (outputs_class.data.cpu().numpy().shape)
+            #     print ("labels_class.data.cpu().numpy():")
+            #     print (labels_class.data.cpu().numpy())
+            #     print (labels_class.data.cpu().numpy().shape)
+            #     print ("F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
+            #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
+            #     print (F.softmax(outputs_class, dim=1).data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
+            #     print ("labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0]:")
+            #     print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0])
+            #     print (labels_class.data.cpu().numpy()[labels_class.data.cpu().numpy() > 0].shape)
 
             ########################################################################
             # # compute the total loss:
