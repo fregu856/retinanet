@@ -1119,8 +1119,11 @@ class DatasetThnSeq(torch.utils.data.Dataset):
     def __init__(self, thn_data_path):
         self.img_dir = thn_data_path + "/"
 
-        self.img_height = 512
-        self.img_width = 1024
+        self.orig_img_height = 512
+        self.orig_img_width = 1024
+
+        self.img_height = 375
+        self.img_width = 1242
 
         self.examples = []
 
@@ -1139,7 +1142,8 @@ class DatasetThnSeq(torch.utils.data.Dataset):
 
         img_path = self.img_dir + img_id + ".png"
         img = cv2.imread(img_path, -1)
-        img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
+        img = cv2.resize(img, (self.img_width, int((self.img_width/self.orig_img_width)*self.img_height)))
+        img = img[(int((self.img_width/self.orig_img_width)*self.img_height) - self.img_height):int((self.img_width/self.orig_img_width)*self.img_height)]
 
         ########################################################################
         # normalize the img:

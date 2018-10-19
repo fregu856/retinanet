@@ -110,6 +110,9 @@ for step, (imgs, img_ids) in enumerate(test_loader):
 ################################################################################
 # create visualization video:
 ################################################################################
+orig_img_height = 512
+orig_img_width = 1024
+
 img_height = 375
 img_width = 1242
 
@@ -168,6 +171,8 @@ for img_id in sorted_img_ids:
     print (img_id)
 
     img = cv2.imread(img_dir + img_id + ".png", -1)
+    img = cv2.resize(img, (img_width, int((img_width/orig_img_width)*img_height)))
+    img = img[(int((img_width/orig_img_width)*img_height) - img_height):int((img_width/orig_img_width)*img_height)]
 
     img_with_pred_bboxes = img
 
