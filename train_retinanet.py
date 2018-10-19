@@ -2738,7 +2738,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "9_2_2"
+model_id = "9_2_3"
 
 num_epochs = 1000
 batch_size = 16
@@ -2776,6 +2776,12 @@ regression_loss_func = nn.SmoothL1Loss()
 
 params = add_weight_decay(network, l2_value=0.0001)
 optimizer = torch.optim.Adam(params, lr=learning_rate)
+
+with open("/root/retinanet/data/kitti/meta/class_weights.pkl", "rb") as file: # (needed for python3)
+    class_weights_foreground = np.array(pickle.load(file))
+class_weights_foreground = torch.from_numpy(class_weights_foreground)
+class_weights_foreground = Variable(class_weights_foreground.type(torch.FloatTensor)).cuda()
+print (class_weights_foreground)
 
 epoch_losses_train = []
 epoch_losses_class_train = []
@@ -2891,8 +2897,8 @@ for epoch in range(num_epochs):
 
         mask_foreground = labels_class > 0
         mask_foreground = mask_foreground.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-        outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_background_anchors, num_classes))
-        labels_class_foreground = labels_class[mask_foreground] # (shape: (num_background_anchors, ))
+        outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_foreground_anchors, num_classes))
+        labels_class_foreground = labels_class[mask_foreground] # (shape: (num_foreground_anchors, ))
 
         num_foreground_anchors = float(labels_class_foreground.size()[0])
         num_background_anchors = float(labels_class_background.size()[0])
@@ -2905,7 +2911,7 @@ for epoch in range(num_epochs):
 
         labels_class_onehot_foreground = onehot_embed(labels_class_foreground, num_classes) # (shape: (num_class_anchors, num_classes))
         CE_foreground = -labels_class_onehot_foreground*F.log_softmax(outputs_class_foreground, dim=1) # (shape: (num_class_anchors, num_classes))
-        weight_foreground = labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+        weight_foreground = class_weights_foreground*labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
         loss_class_foreground = weight_foreground*CE_foreground # (shape: (num_class_anchors, num_classes))
         loss_class_foreground, _ = torch.max(loss_class_foreground, dim=1) # (shape: (num_class_anchors, ))
         loss_class_foreground = torch.mean(loss_class_foreground)
@@ -3098,8 +3104,8 @@ for epoch in range(num_epochs):
 
             mask_foreground = labels_class > 0
             mask_foreground = mask_foreground.type(torch.ByteTensor).cuda() # (NOTE! ByteTensor is needed for this to act as a selction mask)
-            outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_background_anchors, num_classes))
-            labels_class_foreground = labels_class[mask_foreground] # (shape: (num_background_anchors, ))
+            outputs_class_foreground = outputs_class[mask_foreground, :] # (shape: (num_foreground_anchors, num_classes))
+            labels_class_foreground = labels_class[mask_foreground] # (shape: (num_foreground_anchors, ))
 
             num_foreground_anchors = float(labels_class_foreground.size()[0])
             num_background_anchors = float(labels_class_background.size()[0])
@@ -3112,7 +3118,7 @@ for epoch in range(num_epochs):
 
             labels_class_onehot_foreground = onehot_embed(labels_class_foreground, num_classes) # (shape: (num_class_anchors, num_classes))
             CE_foreground = -labels_class_onehot_foreground*F.log_softmax(outputs_class_foreground, dim=1) # (shape: (num_class_anchors, num_classes))
-            weight_foreground = labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
+            weight_foreground = class_weights_foreground*labels_class_onehot_foreground*torch.pow(1 - F.softmax(outputs_class_foreground, dim=1), gamma) # (shape: (num_class_anchors, num_classes))
             loss_class_foreground = weight_foreground*CE_foreground # (shape: (num_class_anchors, num_classes))
             loss_class_foreground, _ = torch.max(loss_class_foreground, dim=1) # (shape: (num_class_anchors, ))
             loss_class_foreground = torch.mean(loss_class_foreground)

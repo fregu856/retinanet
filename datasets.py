@@ -1114,3 +1114,49 @@ class DatasetTestSeq(torch.utils.data.Dataset):
 
     def __len__(self):
         return self.num_examples
+
+class DatasetThnSeq(torch.utils.data.Dataset):
+    def __init__(self, thn_data_path):
+        self.img_dir = thn_data_path + "/"
+
+        self.img_height = 512
+        self.img_width = 1024
+
+        self.examples = []
+
+        img_ids = []
+        img_names = os.listdir(self.img_dir)
+        for img_name in img_names:
+            img_id = img_name.split(".png")[0]
+            img_ids.append(img_id)
+
+        self.examples = img_ids
+
+        self.num_examples = len(self.examples)
+
+    def __getitem__(self, index):
+        img_id = self.examples[index]
+
+        img_path = self.img_dir + img_id + ".png"
+        img = cv2.imread(img_path, -1)
+        img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
+
+        ########################################################################
+        # normalize the img:
+        ########################################################################
+        img = img/255.0
+        img = img - np.array([0.485, 0.456, 0.406])
+        img = img/np.array([0.229, 0.224, 0.225]) # (shape: (img_height, img_width, 3))
+        img = np.transpose(img, (2, 0, 1)) # (shape: (3, img_height, img_width))
+        img = img.astype(np.float32)
+
+        ########################################################################
+        # convert numpy -> torch:
+        ########################################################################
+        img = torch.from_numpy(img) # (shape: (3, img_height, img_width))
+
+        # (img has shape: (3, img_height, img_width))
+        return (img, img_id)
+
+    def __len__(self):
+        return self.num_examples
