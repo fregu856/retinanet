@@ -201,7 +201,7 @@ lambda_value = 100.0 # (loss weight)
 lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2___/checkpoints/model_9_2____epoch_520.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2_2/checkpoints/model_9_2_2_epoch_140.pth"))
 
 num_classes = network.num_classes
 
