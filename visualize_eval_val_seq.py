@@ -55,8 +55,7 @@ def draw_2d_polys_no_text(img, polys):
 
     return img
 
-# for sequence in ["0000", "0001", "0002", "0003", "0004", "0007"]:
-for sequence in ["0004"]:
+for sequence in ["0000", "0001", "0002", "0003", "0004", "0005", "0006", "0007", "0008", "0009", "0010", "0011", "0012", "0013", "0014", "0015", "0016", "0017", "0018", "0019", "0020"]:
     print (sequence)
 
     # NOTE! here you can choose what model's output you want to visualize

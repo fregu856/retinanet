@@ -201,7 +201,7 @@ lambda_value = 100.0 # (loss weight)
 lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2_2/checkpoints/model_9_2_2_epoch_140.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2_3_2/checkpoints/model_9_2_3_2_epoch_380.pth"))
 
 num_classes = network.num_classes
 
@@ -253,9 +253,9 @@ for step, (imgs, labels_regr, labels_class, img_ids) in enumerate(val_loader):
             # (pred_class_labels has shape (num_preds_after_nms, ))
 
             if pred_bboxes is not None:
-                print ("Number of predicted bboxes:")
-                print (pred_bboxes.size())
-                print ("####")
+                # print ("Number of predicted bboxes:")
+                # print (pred_bboxes.size())
+                # print ("####")
 
                 pred_bboxes = pred_bboxes.data.cpu().numpy()
                 pred_max_scores = pred_max_scores.data.cpu().numpy()

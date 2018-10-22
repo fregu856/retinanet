@@ -25,7 +25,7 @@ lambda_value = 100.0 # (loss weight)
 lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val_seq", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2___/checkpoints/model_9_2____epoch_520.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2_2_2/checkpoints/model_9_2_2_2_epoch_390.pth"))
 
 num_classes = network.num_classes
 
@@ -40,8 +40,7 @@ classification_loss_func = nn.CrossEntropyLoss(ignore_index=-1)
 
 network.eval() # (set in evaluation mode, this affects BatchNorm and dropout)
 
-# for sequence in ["0000", "0001", "0002", "0003", "0004", "0007"]:
-for sequence in ["0004"]:
+for sequence in ["0000", "0001", "0002", "0003", "0004", "0005", "0006", "0007", "0008", "0009", "0010", "0011", "0012", "0013", "0014", "0015", "0016", "0017", "0018", "0019", "0020"]:
     print (sequence)
 
     val_dataset = DatasetEvalSeq(kitti_data_path="/root/3DOD_thesis/data/kitti",

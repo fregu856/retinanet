@@ -88,7 +88,7 @@ class BboxEncoder:
         self.scale_ratios = [1.0, pow(2, 1.0/3.0), pow(2, 2.0/3.0)]
 
         self.nms_thresh = 0.5
-        self.class_thresh = 0.70
+        self.class_thresh = 0.7
 
         self.img_h = img_h
         self.img_w = img_w
@@ -398,8 +398,8 @@ class BboxEncoder:
         pred_max_scores = pred_max_scores[keep_inds] # (shape (num_foreground_preds, ))
         pred_class_labels = pred_class_labels[keep_inds] # (shape (num_foreground_preds, ))
 
-        print ("Number of predicted bboxes before thresholding:")
-        print (outputs_regr.size())
+        # print ("Number of predicted bboxes before thresholding:")
+        # print (outputs_regr.size())
 
         if outputs_regr.size() == torch.Size([4]):
             outputs_regr = outputs_regr.unsqueeze(0)
@@ -419,8 +419,8 @@ class BboxEncoder:
             pred_max_scores = pred_max_scores[keep_inds] # (shape (num_preds_before_nms, ))
             pred_class_labels = pred_class_labels[keep_inds] # (shape (num_preds_before_nms, ))
 
-            print ("Number of predicted bboxes before NMS:")
-            print (outputs_regr.size())
+            # print ("Number of predicted bboxes before NMS:")
+            # print (outputs_regr.size())
 
             if outputs_regr.size() == torch.Size([4]):
                 outputs_regr = outputs_regr.unsqueeze(0)
@@ -610,7 +610,7 @@ class DatasetMoreAugmentation2(torch.utils.data.Dataset):
         self.label_dir = kitti_data_path + "/object/training/label_2/"
         self.calib_dir = kitti_data_path + "/object/training/calib/"
 
-        with open(kitti_meta_path + "/%s_img_ids_random.pkl" % type, "rb") as file: # (needed for python3)
+        with open(kitti_meta_path + "/%s_img_ids.pkl" % type, "rb") as file: # (needed for python3)
             img_ids = pickle.load(file)
 
         self.img_height = 375
@@ -804,7 +804,7 @@ class DatasetEval(torch.utils.data.Dataset):
         self.label_dir = kitti_data_path + "/object/training/label_2/"
         self.calib_dir = kitti_data_path + "/object/training/calib/"
 
-        with open(kitti_meta_path + "/%s_img_ids_random.pkl" % type, "rb") as file: # (needed for python3)
+        with open(kitti_meta_path + "/%s_img_ids.pkl" % type, "rb") as file: # (needed for python3)
             img_ids = pickle.load(file)
 
         self.img_height = 375
