@@ -30,8 +30,13 @@ After modification:
 [1.0, 1.5699156534303222, 10.416672919112907, 15.096277253799496]
 ```
 ****
+****
+****
 
-9_2___ on val_random:
+nms_thresh = 0.5
+class_thresh = 0.5
+
+9_2___ epoch 520 on val_random:
 ```
 car easy detection 0.7595934545454545
 car moderate detection 0.6821118181818183
@@ -59,4 +64,94 @@ pedestrian hard detection 0.4030180909090909
 cyclist easy detection 0.4406213636363636
 cyclist moderate detection 0.41050045454545464
 cyclist hard detection 0.39612745454545456
+```
+
+9_2_2 epoch 520 on val_random:
+```
+car easy detection 0.8168949090909091
+car moderate detection 0.7367157272727273
+car hard detection 0.6661809090909091
+=================
+pedestrian easy detection 0.6076561818181817
+pedestrian moderate detection 0.5453122727272727
+pedestrian hard detection 0.5014571818181819
+=================
+cyclist easy detection 0.558449090909091
+cyclist moderate detection 0.5075719090909092
+cyclist hard detection 0.48960345454545456
+```
+
+9_2_2 epoch 1000 on val_random:
+```
+car easy detection 0.8073124545454544
+car moderate detection 0.7310638181818182
+car hard detection 0.6628736363636364
+=================
+pedestrian easy detection 0.6576356363636363
+pedestrian moderate detection 0.5871550909090909
+pedestrian hard detection 0.541631
+=================
+cyclist easy detection 0.5891685454545453
+cyclist moderate detection 0.5478943636363638
+cyclist hard detection 0.5262490000000001
+```
+
+9_2_3 epoch 520 on val_random:
+```
+car easy detection 0.5915137272727273
+car moderate detection 0.513204
+car hard detection 0.48550690909090916
+=================
+pedestrian easy detection 0.458893
+pedestrian moderate detection 0.4383350909090908
+pedestrian hard detection 0.414931
+=================
+cyclist easy detection 0.5274312727272727
+cyclist moderate detection 0.4361208181818182
+cyclist hard detection 0.4332996363636363
+```
+
+9_2_3 epoch 1000 on val_random:
+```
+car easy detection 0.7455983636363637
+car moderate detection 0.6282966363636363
+car hard detection 0.576304909090909
+=================
+pedestrian easy detection 0.5058948181818181
+pedestrian moderate detection 0.4996721818181818
+pedestrian hard detection 0.46471009090909093
+=================
+cyclist easy detection 0.5217887272727273
+cyclist moderate detection 0.4704944545454545
+cyclist hard detection 0.45830736363636365
+```
+
+9_2_2_2 epoch 380 on val_random:
+```
+car easy detection 0.8502569090909091
+car moderate detection 0.7965869090909091
+car hard detection 0.742355
+=================
+pedestrian easy detection 0.593295
+pedestrian moderate detection 0.5470084545454544
+pedestrian hard detection 0.49333663636363634
+=================
+cyclist easy detection 0.5827274545454546
+cyclist moderate detection 0.5152459999999999
+cyclist hard detection 0.5197565454545455
+```
+
+9_2_3_2 epoch 380 on val_random:
+```
+car easy detection 0.761842090909091
+car moderate detection 0.6412636363636364
+car hard detection 0.6014667272727272
+=================
+pedestrian easy detection 0.49154572727272733
+pedestrian moderate detection 0.4674940000000001
+pedestrian hard detection 0.43318654545454544
+=================
+cyclist easy detection 0.5239035454545454
+cyclist moderate detection 0.4835083636363636
+cyclist hard detection 0.4837232727272728
 ```
