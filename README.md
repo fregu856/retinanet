@@ -36,7 +36,7 @@ After modification:
 nms_thresh = 0.5
 class_thresh = 0.5
 
-9_2___ on val_random:
+9_2___ epoch 520 on val_random:
 ```
 car easy detection 0.7595934545454545
 car moderate detection 0.6821118181818183
