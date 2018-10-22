@@ -125,3 +125,18 @@ cyclist easy detection 0.5217887272727273
 cyclist moderate detection 0.4704944545454545
 cyclist hard detection 0.45830736363636365
 ```
+
+9_2_2_2 epoch 380 on val_random:
+```
+car easy detection 0.8502569090909091
+car moderate detection 0.7965869090909091
+car hard detection 0.742355
+=================
+pedestrian easy detection 0.593295
+pedestrian moderate detection 0.5470084545454544
+pedestrian hard detection 0.49333663636363634
+=================
+cyclist easy detection 0.5827274545454546
+cyclist moderate detection 0.5152459999999999
+cyclist hard detection 0.5197565454545455
+```
