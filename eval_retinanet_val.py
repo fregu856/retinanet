@@ -377,11 +377,11 @@ import cv2
 batch_size = 16
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_11/checkpoints/model_11_epoch_2.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_11/checkpoints/model_11_epoch_10.pth"))
 
 val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
                           kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
-                          type="val")
+                          type="train")
 
 bbox_encoder = BboxEncoder(img_h=val_dataset.img_height, img_w=val_dataset.img_width)
 
@@ -414,19 +414,19 @@ for step, (imgs, labels_regr, img_ids) in enumerate(val_loader):
             output_regr = outputs_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
             output_var = outputs_var[i, :, :].data.cpu() # (shape: (num_anchors, 4))
 
-            pred_bboxes, pred_conf_scores, outputs_var = bbox_encoder.decode(output_regr, output_var)
+            pred_bboxes, pred_conf_scores, output_var = bbox_encoder.decode(output_regr, output_var)
             # (pred_bboxes has shape (num_preds_after_nms, 4), (x, y, w, h))
             # (pred_conf_scores has shape (num_preds_after_nms, ))
-            # (outputs_var has shape (num_preds_after_nms, 4), (x_var, y_var, w_var, h_var))
+            # (output_var has shape (num_preds_after_nms, 4), (x_var, y_var, w_var, h_var))
 
             if pred_bboxes is not None:
-                # print ("Number of predicted bboxes:")
-                # print (pred_bboxes.size())
-                # print ("####")
+                print ("Number of predicted bboxes:")
+                print (pred_bboxes.size())
+                print ("####")
 
                 pred_bboxes = pred_bboxes.data.cpu().numpy()
                 pred_conf_scores = pred_conf_scores.data.cpu().numpy()
-                outputs_var = outputs_var.data.cpu().numpy()
+                output_var = output_var.data.cpu().numpy()
 
                 label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
 
@@ -436,13 +436,12 @@ for step, (imgs, labels_regr, img_ids) in enumerate(val_loader):
                 img_dict = {}
                 img_dict["pred_bboxes"] = pred_bboxes
                 img_dict["pred_conf_scores"] = pred_conf_scores
-                img_dict["outputs_var"] = ouputs_var
+                img_dict["output_var"] = output_var
                 #img_dict["gt_bboxes"] = gt_bboxes
 
                 eval_dict[img_id] = img_dict
             else:
                 label_regr = labels_regr[i, :, :].data.cpu() # (shape: (num_anchors, 4))
-                label_class = labels_class[i, :].data.cpu().numpy() # (num_anchors, )
 
                 gt_bboxes = bbox_encoder.decode_gt_single(label_regr) # (shape: (num_anchors, 4))
                 gt_bboxes = gt_bboxes.numpy()
@@ -450,7 +449,7 @@ for step, (imgs, labels_regr, img_ids) in enumerate(val_loader):
                 img_dict = {}
                 img_dict["pred_bboxes"] = None
                 img_dict["pred_conf_scores"] = None
-                img_dict["outputs_var"] = None
+                img_dict["output_var"] = None
                 #img_dict["gt_bboxes"] = gt_bboxes
 
                 eval_dict[img_id] = img_dict

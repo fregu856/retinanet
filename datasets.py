@@ -1586,7 +1586,7 @@ class BboxEncoder:
         self.scale_ratios = [1.0, pow(2, 1.0/3.0), pow(2, 2.0/3.0)]
 
         self.nms_thresh = 0.5
-        self.conf_thresh = 0.7
+        self.conf_thresh = 0.95
 
         self.img_h = img_h
         self.img_w = img_w
@@ -1868,6 +1868,10 @@ class BboxEncoder:
         # (self.anchor_bboxes has shape (num_anchors, 4), (x, y, w, h))
 
         pred_conf_scores = 1.0/(1.0 + torch.mean(torch.exp(outputs_var), dim=1)) # (shape: (num_anchors, ))
+        print (pred_conf_scores)
+        print (torch.max(pred_conf_scores))
+        print (torch.min(pred_conf_scores))
+        print (torch.mean(pred_conf_scores))
 
         # get the indices for all pred bboxes with a large enough pred conf score:
         keep_inds = pred_conf_scores > self.conf_thresh # (shape (num_foreground_preds, ), entries in {0, 1})
@@ -1877,8 +1881,11 @@ class BboxEncoder:
         # get all pred bboxes with a large enough pred conf score:
         outputs_regr = outputs_regr[keep_inds] # (shape (num_preds_before_nms, 4), (x, y, w, h))
         outputs_var = outputs_var[keep_inds] # (shape (num_preds_before_nms, 4), (x_var, y_var, w_var, h_var))
-        anchor_bboxes = anchor_bboxes[keep_inds] # (shape (num_preds_before_nms, 4), (x, y, w, h))
+        anchor_bboxes = self.anchor_bboxes[keep_inds] # (shape (num_preds_before_nms, 4), (x, y, w, h))
         pred_conf_scores = pred_conf_scores[keep_inds] # (shape (num_preds_before_nms, ))
+
+        print ("Number of predicted bboxes before NMS:")
+        print (outputs_regr.size())
 
         if outputs_regr.size() == torch.Size([4]):
             outputs_regr = outputs_regr.unsqueeze(0)
@@ -1902,11 +1909,11 @@ class BboxEncoder:
 
             pred_bboxes = torch.cat([pred_x, pred_y, pred_w, pred_h], 1) # (shape (num_preds_before_nms, 4), (x, y, w, h))
 
-            # filter bboxes by performing nms:
-            keep_inds = self._bbox_nms(pred_bboxes, pred_max_scores) # (shape: (num_preds_after_nms, ))
-            pred_bboxes = pred_bboxes[keep_inds]
-            outputs_var = outputs_var[keep_inds]
-            pred_conf_scores = pred_conf_scores[keep_inds]
+            # # filter bboxes by performing nms:
+            # keep_inds = self._bbox_nms(pred_bboxes, pred_conf_scores) # (shape: (num_preds_after_nms, ))
+            # pred_bboxes = pred_bboxes[keep_inds]
+            # outputs_var = outputs_var[keep_inds]
+            # pred_conf_scores = pred_conf_scores[keep_inds]
 
             # (pred_bboxes has shape (num_preds_after_nms, 4), (x, y, w, h))
             # (pred_conf_scores has shape (num_preds_after_nms, ))
