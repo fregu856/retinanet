@@ -155,3 +155,10 @@ cyclist easy detection 0.5239035454545454
 cyclist moderate detection 0.4835083636363636
 cyclist hard detection 0.4837232727272728
 ```
+
+9_2_2_2 epoch 390 on test:
+```
+Car (Detection)	75.21 %	55.68 %	48.40 %
+Pedestrian (Detection)	31.69 %	25.36 %	22.16 %
+Cyclist (Detection)	25.21 %	17.69 %	16.19 %
+```
