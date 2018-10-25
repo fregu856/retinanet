@@ -20,7 +20,7 @@ import cv2
 batch_size = 16
 
 network = RetinaNet("eval_test", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_8_2/checkpoints/model_8_2_epoch_150.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2_2_2/checkpoints/model_9_2_2_2_epoch_390.pth"))
 
 num_classes = network.num_classes
 
