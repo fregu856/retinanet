@@ -3685,7 +3685,7 @@
 #     torch.save(network.state_dict(), checkpoint_path)
 
 ################################################################################
-#
+# no classification:
 ################################################################################
 from datasets import DatasetMoreAugmentation2, DatasetEval # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet

@@ -1867,10 +1867,6 @@ class BboxEncoder:
         # (outputs_var has shape (num_anchors, 4), (x_var, y_var, w_var, h_var))
         # (self.anchor_bboxes has shape (num_anchors, 4), (x, y, w, h))
 
-        # for each anchor bbox, get the pred class label and the corresponding pred score:
-        pred_scores = F.softmax(Variable(outputs_class), dim=1).data # (shape (num_anchors, num_classes))
-        pred_max_scores, pred_class_labels = torch.max(pred_scores, 1) # (both have shape (num_anchors, ))
-
         pred_conf_scores = 1.0/(1.0 + torch.mean(torch.exp(outputs_var), dim=1)) # (shape: (num_anchors, ))
 
         # get the indices for all pred bboxes with a large enough pred conf score:
