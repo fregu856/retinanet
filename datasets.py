@@ -4,7 +4,7 @@ import sys
 
 sys.path.append("/root/retinanet/data_aug")
 sys.path.append("/home/fregu856/retinanet/data_aug")
-from data_aug import RandomHorizontalFlip, RandomHSV, RandomScale, RandomTranslate, Scale
+from data_aug import RandomHorizontalFlip, RandomHSV, RandomScale, RandomTranslate, Resize
 
 import torch
 import torch.utils.data
@@ -1476,33 +1476,36 @@ from synscapesloader import LabelLoader2D3D_Synscapes
 class_string_to_label_synscapes = {"car": 1,
                                    "person": 2,
                                    "bicyclist": 3} # (background: 0)
+
 class DatasetSynscapesAugmentation(torch.utils.data.Dataset):
-    def __init__(self, synscapes_path):
+    def __init__(self, synscapes_path, synscapes_meta_path, type):
         self.img_dir = synscapes_path + "/img/rgb/"
         self.meta_dir = synscapes_path + "/meta/"
 
-        self.orig_img_height = 720
-        self.orig_img_width = 1440
+        with open(synscapes_meta_path + "/%s_img_ids.pkl" % type, "rb") as file: # (needed for python3)
+            img_ids = pickle.load(file)
 
-        self.img_height = 375
-        self.img_width = 1242
+        # self.orig_img_height = 720
+        # self.orig_img_width = 1440
+        #
+        # self.img_height = 375
+        # self.img_width = 1242
+
+        self.img_height = 720
+        self.img_width = 1440
 
         self.random_horizontal_flip = RandomHorizontalFlip(p=0.5)
         self.random_hsv = RandomHSV(hue=10, saturation=20, brightness=20)
         self.random_scale = RandomScale(scale=0.3)
         self.random_translate = RandomTranslate(translate=0.2)
 
-        self.scale = Scale
+        # scale = float(float(self.img_width)/float(self.orig_img_width))
+        # print (int(scale*self.orig_img_height))
+        # self.resize = Resize((int(scale*self.orig_img_height), self.img_width))
 
         self.bbox_encoder = BboxEncoder(img_h=self.img_height, img_w=self.img_width)
 
         self.num_classes = 4 # (background, car, pedestrian, cyclist)
-
-        img_ids = []
-        img_names = os.listdir(self.img_dir)
-        for img_name in img_names:
-            img_id = img_name.split(".png")[0]
-            img_ids.append(img_id)
 
         self.examples = []
         for img_id in img_ids:
@@ -1543,7 +1546,7 @@ class DatasetSynscapesAugmentation(torch.utils.data.Dataset):
         img_id = example["img_id"]
 
         img_path = self.img_dir + img_id + ".png"
-        img = cv2.imread(img_path, -1)
+        img = cv2.imread(img_path, -1) # (shape: (orig_img_height, orig_img_width, 3))
 
         gt_bboxes_xxyy = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
         gt_classes = example["class_labels"] # (shape: (num_gt_objects, ))
@@ -1551,6 +1554,45 @@ class DatasetSynscapesAugmentation(torch.utils.data.Dataset):
         gt_bboxes_xxyyc = np.zeros((gt_bboxes_xxyy.shape[0], 5), dtype=gt_bboxes_xxyy.dtype) # (shape: (num_gt_objects, 5), (x_min, x_max, y_min, y_max, class_label))
         gt_bboxes_xxyyc[:, 0:4] = gt_bboxes_xxyy
         gt_bboxes_xxyyc[:, 4] = gt_classes
+
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     if gt_bboxes_xxyyc[i, 4] == 1: # (Car)
+        #         bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
+        #     elif gt_bboxes_xxyyc[i, 4] == 2: # (Pedestrian)
+        #         bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
+        #     elif gt_bboxes_xxyyc[i, 4] == 3: # (Cyclist)
+        #         bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
+        #
+        # print (img.shape)
+        # img, gt_bboxes_xyxyc = self.resize(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc)) # (img has shape: ())
+        # gt_bboxes_xxyyc = bboxes_xyxyc_2_xxyyc(gt_bboxes_xyxyc)
+        # print (img.shape)
+        #
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     if gt_bboxes_xxyyc[i, 4] == 1: # (Car)
+        #         bbox_poly["color"] = np.array([255, 0, 0], dtype='float64')
+        #     elif gt_bboxes_xxyyc[i, 4] == 2: # (Pedestrian)
+        #         bbox_poly["color"] = np.array([0, 200, 0], dtype='float64')
+        #     elif gt_bboxes_xxyyc[i, 4] == 3: # (Cyclist)
+        #         bbox_poly["color"] = np.array([0, 0, 255], dtype='float64')
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
 
         ########################################################################
         # data augmentation START:
@@ -1702,11 +1744,123 @@ class DatasetSynscapesAugmentation(torch.utils.data.Dataset):
     def __len__(self):
         return self.num_examples
 
-test = DatasetSynscapesAugmentation("/home/fregu856/data/synscapes")
-for i in range(10):
-    _ = test.__getitem__(i)
+# test = DatasetSynscapesAugmentation("/home/fregu856/data/synscapes")
+# for i in range(10):
+#     _ = test.__getitem__(i)
 
+class DatasetSynscapesEval(torch.utils.data.Dataset):
+    def __init__(self, synscapes_path, synscapes_meta_path, type):
+        self.img_dir = synscapes_path + "/img/rgb/"
+        self.meta_dir = synscapes_path + "/meta/"
 
+        with open(synscapes_meta_path + "/%s_img_ids.pkl" % type, "rb") as file: # (needed for python3)
+            img_ids = pickle.load(file)
+
+        # self.orig_img_height = 720
+        # self.orig_img_width = 1440
+        #
+        # self.img_height = 375
+        # self.img_width = 1242
+
+        self.img_height = 720
+        self.img_width = 1440
+
+        # scale = float(float(self.img_width)/float(self.orig_img_width))
+        # print (int(scale*self.orig_img_height))
+        # self.resize = Resize((int(scale*self.orig_img_height), self.img_width))
+
+        self.bbox_encoder = BboxEncoder(img_h=self.img_height, img_w=self.img_width)
+
+        self.num_classes = 4 # (background, car, pedestrian, cyclist)
+
+        self.examples = []
+        for img_id in img_ids:
+            example = {}
+            example["img_id"] = img_id
+
+            labels = LabelLoader2D3D_Synscapes(meta_dir=self.meta_dir, file_id=img_id)
+
+            bboxes = np.zeros((len(labels), 4), dtype=np.float32)
+            class_labels = np.zeros((len(labels), ), dtype=np.float32)
+            counter = 0
+            for label in labels:
+                label_2d = label["label_2D"]
+                if label_2d["class"] in ["car", "person", "bicyclist"] and label_2d["occluded"] < 0.7 and label_2d["truncated"] < 0.7:
+                    bbox = label_2d["poly"]
+                    u_min = bbox[0, 0] # (left)
+                    u_max = bbox[1, 0] # (rigth)
+                    v_min = bbox[0, 1] # (top)
+                    v_max = bbox[2, 1] # (bottom)
+                    bboxes[counter] = np.array([u_min, u_max, v_min, v_max])
+
+                    class_labels[counter] = class_string_to_label_synscapes[label_2d["class"]]
+
+                    counter += 1
+
+            bboxes = bboxes[0:counter]
+            class_labels = class_labels[0:counter]
+
+            example["bboxes"] = bboxes
+            example["class_labels"] = class_labels
+            self.examples.append(example)
+
+        self.num_examples = len(self.examples)
+
+    def __getitem__(self, index):
+        example = self.examples[index]
+
+        img_id = example["img_id"]
+
+        img_path = self.img_dir + img_id + ".png"
+        img = cv2.imread(img_path, -1) # (shape: (orig_img_height, orig_img_width, 3))
+
+        gt_bboxes_xxyy = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = example["class_labels"] # (shape: (num_gt_objects, ))
+
+        gt_bboxes_xxyyc = np.zeros((gt_bboxes_xxyy.shape[0], 5), dtype=gt_bboxes_xxyy.dtype) # (shape: (num_gt_objects, 5), (x_min, x_max, y_min, y_max, class_label))
+        gt_bboxes_xxyyc[:, 0:4] = gt_bboxes_xxyy
+        gt_bboxes_xxyyc[:, 4] = gt_classes
+
+        ########################################################################
+        # normalize the img:
+        ########################################################################
+        img = img/255.0
+        img = img - np.array([0.485, 0.456, 0.406])
+        img = img/np.array([0.229, 0.224, 0.225]) # (shape: (img_height, img_width, 3))
+        img = np.transpose(img, (2, 0, 1)) # (shape: (3, img_height, img_width))
+        img = img.astype(np.float32)
+
+        ########################################################################
+        # get ground truth:
+        ########################################################################
+        gt_bboxes_xxyy = gt_bboxes_xxyyc[:, 0:4] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = gt_bboxes_xxyyc[:, 4] # (shape (num_gt_objects, ))
+        gt_bboxes_xxyy = torch.from_numpy(gt_bboxes_xxyy) # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
+        gt_classes = torch.from_numpy(gt_classes) # (shape (num_gt_objects, ))
+
+        if gt_bboxes_xxyy.size(0) == 0: # (if 0 gt objects)
+            return self.__getitem__(index+1)
+
+        if gt_bboxes_xxyy.size() == torch.Size([4]): # (if 1 gt object)
+            gt_bboxes_xxyy = gt_bboxes_xxyy.unsqueeze(0)
+            gt_classes = torch.from_numpy(np.array([gt_classes.data]))
+
+        label_regr, label_class = self.bbox_encoder.encode(gt_bboxes_xxyy, gt_classes)
+        # (label_regr is a Tensor of shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class is a Tensor of shape: (num_anchors, ))
+
+        ########################################################################
+        # convert numpy -> torch:
+        ########################################################################
+        img = torch.from_numpy(img) # (shape: (3, img_height, img_width))
+
+        # (img has shape: (3, img_height, img_width))
+        # (label_regr has shape: (num_anchors, 4)) (x_resid, y_resid, w_resid, h_resid)
+        # (label_class has shape: (num_anchors, ))
+        return (img, label_regr, label_class, img_id)
+
+    def __len__(self):
+        return self.num_examples
 
 
 
