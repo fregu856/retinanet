@@ -355,7 +355,7 @@
 ################################################################################
 # no classification:
 ################################################################################
-from datasets import DatasetEval, BboxEncoder # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+from datasets import DatasetEval, BboxEncoder, DatasetSynscapesEvalFullSize # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
 
 from utils import onehot_embed
@@ -377,11 +377,14 @@ import cv2
 batch_size = 16
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_11/checkpoints/model_11_epoch_10.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_13/checkpoints/model_13_epoch_50.pth"))
 
-val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
-                          kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
-                          type="train")
+val_dataset = DatasetSynscapesEvalFullSize(synscapes_path="/root/data/synscapes",
+                                           synscapes_meta_path="/root/retinanet/data/synscapes_meta",
+                                           type="val")
+# val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
+#                           kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+#                           type="val")
 
 bbox_encoder = BboxEncoder(img_h=val_dataset.img_height, img_w=val_dataset.img_width)
 
