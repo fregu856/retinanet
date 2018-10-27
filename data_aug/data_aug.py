@@ -701,13 +701,13 @@ class Resize(object):
 
     def __init__(self, inp_dim):
         self.inp_dim = inp_dim
+        print (inp_dim)
 
     def __call__(self, img, bboxes):
         w,h = img.shape[1], img.shape[0]
         img = letterbox_image(img, self.inp_dim)
 
-
-        scale = min(self.inp_dim/h, self.inp_dim/w)
+        scale = min(float(self.inp_dim)/float(h), float(self.inp_dim)/float(w))
         bboxes[:,:4] *= (scale)
 
         new_w = scale*w
