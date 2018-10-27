@@ -1,6 +1,4 @@
-# TODO! TODO!
-
-from datasets import DatasetThnSeq, BboxEncoder # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+from datasets import DatasetThnSeq, BboxEncoder, DatasetThnSeqSynscapes # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
 
 import torch
@@ -56,9 +54,10 @@ def draw_2d_polys(img, polys):
 batch_size = 16
 
 network = RetinaNet("eval_thn", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_9_2___/checkpoints/model_9_2____epoch_520.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_13/checkpoints/model_13_epoch_50.pth"))
 
-test_dataset = DatasetThnSeq(thn_data_path="/root/deeplabv3/data/thn")
+test_dataset = DatasetThnSeqSynscapes(thn_data_path="/root/deeplabv3/data/thn")
+#test_dataset = DatasetThnSeq(thn_data_path="/root/deeplabv3/data/thn")
 
 bbox_encoder = BboxEncoder(img_h=test_dataset.img_height, img_w=test_dataset.img_width)
 
