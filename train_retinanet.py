@@ -3225,7 +3225,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "14"
+model_id = "15_"
 
 num_epochs = 1000
 batch_size = 16
@@ -3240,18 +3240,18 @@ network = RetinaNet(model_id, project_dir="/root/retinanet").cuda()
 
 num_classes = network.num_classes
 
-train_dataset = DatasetSynscapesAugmentation(synscapes_path="/root/data/synscapes",
-                                             synscapes_meta_path="/root/retinanet/data/synscapes_meta",
-                                             type="train")
-val_dataset = DatasetSynscapesEval(synscapes_path="/root/data/synscapes",
-                                   synscapes_meta_path="/root/retinanet/data/synscapes_meta",
-                                   type="val")
-# train_dataset = DatasetMoreAugmentation2(kitti_data_path="/root/3DOD_thesis/data/kitti",
-#                                     kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
-#                                     type="train")
-# val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
-#                           kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
-#                           type="val")
+# train_dataset = DatasetSynscapesAugmentation(synscapes_path="/root/data/synscapes",
+#                                              synscapes_meta_path="/root/retinanet/data/synscapes_meta",
+#                                              type="train")
+# val_dataset = DatasetSynscapesEval(synscapes_path="/root/data/synscapes",
+#                                    synscapes_meta_path="/root/retinanet/data/synscapes_meta",
+#                                    type="val")
+train_dataset = DatasetMoreAugmentation2(kitti_data_path="/root/3DOD_thesis/data/kitti",
+                                    kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+                                    type="train")
+val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
+                          kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+                          type="val")
 
 num_train_batches = int(len(train_dataset)/batch_size)
 num_val_batches = int(len(val_dataset)/batch_size)

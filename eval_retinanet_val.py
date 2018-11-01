@@ -176,7 +176,7 @@
 ################################################################################
 # TODO! set the loss to the exact same one that I eventually settle on
 
-from datasets import DatasetEval, BboxEncoder, DatasetSynscapesEvalFullSize # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+from datasets import DatasetEval, BboxEncoder, DatasetSynscapesEval # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
 
 from utils import onehot_embed
@@ -201,14 +201,14 @@ lambda_value = 10.0 # (loss weight)
 lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_13/checkpoints/model_13_epoch_50.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_14/checkpoints/model_14_epoch_200.pth"))
 
-val_dataset = DatasetSynscapesEvalFullSize(synscapes_path="/root/data/synscapes",
-                                           synscapes_meta_path="/root/retinanet/data/synscapes_meta",
-                                           type="val")
-# val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
-#                           kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
-#                           type="val")
+# val_dataset = DatasetSynscapesEval(synscapes_path="/root/data/synscapes",
+#                                    synscapes_meta_path="/root/retinanet/data/synscapes_meta",
+#                                    type="val")
+val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
+                          kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+                          type="val")
 
 bbox_encoder = BboxEncoder(img_h=val_dataset.img_height, img_w=val_dataset.img_width)
 
