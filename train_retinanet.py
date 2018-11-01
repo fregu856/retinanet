@@ -3203,7 +3203,7 @@
 #     checkpoint_path = network.checkpoints_dir + "/model_" + model_id +"_epoch_" + str(epoch+1) + ".pth"
 #     torch.save(network.state_dict(), checkpoint_path)
 
-from datasets import DatasetMoreAugmentation2, DatasetEval, DatasetSynscapesAugmentation, DatasetSynscapesEval # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
+from datasets import DatasetMoreAugmentation2, DatasetEval, DatasetSynscapesAugmentation, DatasetSynscapesEval, DatasetKITTINuscenesAugmentation # (this needs to be imported before torch, because cv2 needs to be imported before torch for some reason)
 from retinanet import RetinaNet
 
 from utils import onehot_embed, init_weights, add_weight_decay
@@ -3225,7 +3225,7 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "15_"
+model_id = "16"
 
 num_epochs = 1000
 batch_size = 16
@@ -3246,9 +3246,13 @@ num_classes = network.num_classes
 # val_dataset = DatasetSynscapesEval(synscapes_path="/root/data/synscapes",
 #                                    synscapes_meta_path="/root/retinanet/data/synscapes_meta",
 #                                    type="val")
-train_dataset = DatasetMoreAugmentation2(kitti_data_path="/root/3DOD_thesis/data/kitti",
-                                    kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
-                                    type="train")
+# train_dataset = DatasetMoreAugmentation2(kitti_data_path="/root/3DOD_thesis/data/kitti",
+#                                     kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+#                                     type="train")
+train_dataset = DatasetKITTINuscenesAugmentation(nuscenes_data_path="/root/data/nuscenes",
+                                                 kitti_data_path="/root/3DOD_thesis/data/kitti",
+                                                 kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
+                                                 kitti_type="train")
 val_dataset = DatasetEval(kitti_data_path="/root/3DOD_thesis/data/kitti",
                           kitti_meta_path="/root/3DOD_thesis/data/kitti/meta",
                           type="val")

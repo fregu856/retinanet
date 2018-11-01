@@ -1727,8 +1727,8 @@ class DatasetSynscapesEvalFullSize(torch.utils.data.Dataset):
 
 
 
-def ProjectTo2Dbbox(bbox_3D, cam_intrinsic):
-    # (bbox_3D is an array of shape: (7, ), (x, y, z, h, w, l, r_y) in cam coordinates)
+def ProjectTo2Dbbox(bbox_3D, cam_intrinsic, R):
+    # (bbox_3D is an array of shape: (6, ), (x, y, z, h, w, l) in cam coordinates)
     # (cam_intrinsic is an array of shape: (3, 3))
 
     x = bbox_3D[0]
@@ -1737,44 +1737,40 @@ def ProjectTo2Dbbox(bbox_3D, cam_intrinsic):
     h = bbox_3D[3]
     w = bbox_3D[4]
     l = bbox_3D[5]
-    r_y = bbox_3D[6]
 
-    center = np.array([x, y, z])
+    # 3D bounding box corners. (Convention: x points forward, y to the left, z up.)
+    x_corners = (l/2.0)*np.array([1,  1,  1,  1, -1, -1, -1, -1])
+    y_corners = (w/2.0)*np.array([1, -1, -1,  1,  1, -1, -1,  1])
+    z_corners = (h/2.0)*np.array([1,  1, -1, -1,  1,  1, -1, -1])
+    corners = np.vstack((x_corners, y_corners, z_corners))
 
-    Rmat = np.asarray([[math.cos(r_y), 0, math.sin(r_y)],
-                       [0, 1, 0],
-                       [-math.sin(r_y), 0, math.cos(r_y)]],
-                       dtype='float32')
+    # Rotate
+    corners = np.dot(R, corners)
 
-    p0 = center + np.dot(Rmat, np.asarray([l/2.0, 0, w/2.0], dtype='float32').flatten())
-    p1 = center + np.dot(Rmat, np.asarray([-l/2.0, 0, w/2.0], dtype='float32').flatten())
-    p2 = center + np.dot(Rmat, np.asarray([-l/2.0, 0, -w/2.0], dtype='float32').flatten())
-    p3 = center + np.dot(Rmat, np.asarray([l/2.0, 0, -w/2.0], dtype='float32').flatten())
-    p4 = center + np.dot(Rmat, np.asarray([l/2.0, -h, w/2.0], dtype='float32').flatten())
-    p5 = center + np.dot(Rmat, np.asarray([-l/2.0, -h, w/2.0], dtype='float32').flatten())
-    p6 = center + np.dot(Rmat, np.asarray([-l/2.0, -h, -w/2.0], dtype='float32').flatten())
-    p7 = center + np.dot(Rmat, np.asarray([l/2.0, -h, -w/2.0], dtype='float32').flatten())
+    # Translate
+    corners[0, :] = corners[0, :] + x
+    corners[1, :] = corners[1, :] + y
+    corners[2, :] = corners[2, :] + z
 
-    points = np.array([p0, p1, p2, p3, p4, p5, p6, p7])
+    viewpad = np.eye(4)
+    viewpad[:cam_intrinsic.shape[0], :cam_intrinsic.shape[1]] = cam_intrinsic
 
-    points_hom = np.ones((points.shape[0], 4)) # (shape: (8, 4))
-    points_hom[:, 0:3] = points
+    points = corners
+    nbr_points = points.shape[1]
 
-    P = np.eye(4)
-    P[0:3, 0:3] = cam_intrinsic
+    # Do operation in homogenous coordinates
+    points = np.concatenate((points, np.ones((1, nbr_points))))
+    points = np.dot(viewpad, points)
+    points = points[:3, :]
 
-    # project the points onto the image plane (homogeneous coords):
-    img_points_hom = np.dot(P, points_hom.T).T # (shape: (8, 4)) (points_hom.T has shape (4, 8))
-    img_points_hom = img_points_hom[:, 0:3] # (shape: (8, 3))
-    # normalize:
-    img_points = np.zeros((img_points_hom.shape[0], 2)) # (shape: (8, 2))
-    img_points[:, 0] = img_points_hom[:, 0]/img_points_hom[:, 2]
-    img_points[:, 1] = img_points_hom[:, 1]/img_points_hom[:, 2]
+    points = points/points[2:3, :].repeat(3, 0).reshape(3, nbr_points)
 
-    u_min = np.min(img_points[:, 0])
-    v_min = np.min(img_points[:, 1])
-    u_max = np.max(img_points[:, 0])
-    v_max = np.max(img_points[:, 1])
+    points = points.T
+
+    u_min = np.min(points[:, 0])
+    v_min = np.min(points[:, 1])
+    u_max = np.max(points[:, 0])
+    v_max = np.max(points[:, 1])
 
     left = int(u_min)
     top = int(v_min)
@@ -1796,7 +1792,10 @@ from nuscenes_utils.data_classes import PointCloud as NuScenesPointCloud
 from pyquaternion import Quaternion
 
 class_string_to_label_nuscenes = {"vehicle.car": 1,
-                                  "human.pedestrian": 2,
+                                  "human.pedestrian.adult": 2,
+                                  "human.pedestrian.child": 2,
+                                  "human.pedestrian.police_officer": 2,
+                                  "human.pedestrian.construction_worker": 2,
                                   "vehicle.bicycle": 3} # (background: 0)
 
 class DatasetKITTINuscenesAugmentation(torch.utils.data.Dataset):
@@ -1814,6 +1813,9 @@ class DatasetKITTINuscenesAugmentation(torch.utils.data.Dataset):
 
         self.img_height = 375
         self.img_width = 1242
+
+        self.nuscenes_img_height = 900
+        self.nuscenes_img_width = 1600
 
         self.random_horizontal_flip = RandomHorizontalFlip(p=0.5)
         self.random_hsv = RandomHSV(hue=10, saturation=20, brightness=20)
@@ -1837,38 +1839,39 @@ class DatasetKITTINuscenesAugmentation(torch.utils.data.Dataset):
             cam_front_token = sample["data"]["CAM_FRONT"]
             cam_front = self.nusc.get("sample_data", cam_front_token)
 
+            sd_record = cam_front
+            pose_record = self.nusc.get('ego_pose', sd_record['ego_pose_token'])
+
             cs_record = self.nusc.get('calibrated_sensor', cam_front['calibrated_sensor_token'])
             cam_front_intrinsic = np.array(cs_record['camera_intrinsic']) # (shape: (3, 3))
 
             annotation_tokens = sample["anns"]
             for annotation_token in annotation_tokens:
                 annotation = self.nusc.get("sample_annotation", annotation_token)
-                if annotation["category_name"] in ["vehicle.car", "human.pedestrian", "vehicle.bicycle"]:
-                    if int(annotation["visibility_token"]) > 3:
+                if annotation["category_name"] in ["vehicle.car", "human.pedestrian.adult", "human.pedestrian.police_officer", "human.pedestrian.child", "human.pedestrian.construction_worker", "vehicle.bicycle"]:
+                    if int(annotation["visibility_token"]) > 1:
                         translation = annotation["translation"] # (X, Y, Z) (global frame)
 
                         r_y_quat = Quaternion(annotation["rotation"])
 
                         # transform from global frame into the ego vehicle frame for the timestamp of the front-camera image:
-                        poserecord = self.nusc.get("ego_pose", cam_front["ego_pose_token"])
-                        translation = translation - np.array(poserecord["translation"])
-                        translation = np.dot(Quaternion(poserecord["rotation"]).rotation_matrix.T, translation)
+                        translation = translation - np.array(pose_record['translation'])
+                        translation = np.dot(Quaternion(pose_record['rotation']).inverse.rotation_matrix, translation)
+                        r_y_quat = Quaternion(pose_record['rotation']).inverse*r_y_quat
 
                         # transform into the front-camera frame (same as the point cloud is transformed into):
-                        cs_record = self.nusc.get("calibrated_sensor", cam_front["calibrated_sensor_token"])
-                        translation = translation - np.array(cs_record["translation"])
-                        translation = np.dot(Quaternion(cs_record["rotation"]).rotation_matrix.T, translation) # (x, y, z)
+                        translation = translation - np.array(cs_record['translation'])
+                        translation = np.dot(Quaternion(cs_record['rotation']).inverse.rotation_matrix, translation)
+                        r_y_quat = Quaternion(cs_record['rotation']).inverse*r_y_quat
 
                         size = annotation["size"] # (w, l, h)
 
-                        r_y = wrapToPi(-r_y_quat.radians - np.pi/2) # TODO! why is this the same for basically all bboxes?
+                        bbox_3D = np.array([translation[0], translation[1], translation[2], size[2], size[0], size[1]]) # (x, y, z, h, w, l)
 
-                        bbox_3D = np.array([translation[0], translation[1]+size[2]/2.0, translation[2], size[2], size[0], size[1], r_y]) # (x, y, z, h, w, l, r_y)
-                        # (the bbox center is NOT defined to be located on the bottom of the bbox as in KITTI)
-                        # (thus, we have to do 'translation[1]+size[2]/2' above)
+                        R = r_y_quat.rotation_matrix
 
-                        if bbox_3D[2] > 1.0: # (remove all bboxes which are located behind the camera)
-                            bbox_xyxy = ProjectTo2Dbbox(bbox_3D, cam_front_intrinsic) # (x_min, y_min, x_max, y_max)
+                        if bbox_3D[2] > 2.0: # (remove all bboxes which are located behind the camera)
+                            bbox_xyxy = ProjectTo2Dbbox(bbox_3D, cam_front_intrinsic, R) # (x_min, y_min, x_max, y_max)
                             bbox = [bbox_xyxy[0], bbox_xyxy[2], bbox_xyxy[1], bbox_xyxy[3]] # (x_min, x_max, y_min, y_max)
 
                             bboxes.append(bbox)
@@ -1924,6 +1927,9 @@ class DatasetKITTINuscenesAugmentation(torch.utils.data.Dataset):
             gt_bboxes_xxyy = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
             gt_classes = example["class_labels"] # (shape: (num_gt_objects, ))
 
+            if gt_classes.shape[0] == 0:
+                return self.__getitem__(0)
+
             gt_bboxes_xxyyc = np.zeros((gt_bboxes_xxyy.shape[0], 5), dtype=gt_bboxes_xxyy.dtype) # (shape: (num_gt_objects, 5), (x_min, x_max, y_min, y_max, class_label))
             gt_bboxes_xxyyc[:, 0:4] = gt_bboxes_xxyy
             gt_bboxes_xxyyc[:, 4] = gt_classes
@@ -1938,33 +1944,38 @@ class DatasetKITTINuscenesAugmentation(torch.utils.data.Dataset):
             cam_front_filename = cam_front_sample_data["filename"]
             img_path = self.nuscenes_data_path + "/" + cam_front_filename
             img = cv2.imread(img_path, -1)
-            #img = cv2.resize(img, (self.img_width, self.img_height)) # (shape: (img_height, img_width, 3))
-            print (img.shape)
 
             gt_bboxes_xxyy = example["bboxes"] # (shape: (num_gt_objects, 4), (x_min, x_max, y_min, y_max))
             gt_classes = example["class_labels"] # (shape: (num_gt_objects, ))
-            print (gt_bboxes_xxyy)
-            print (gt_bboxes_xxyy.shape)
-            print (gt_classes)
-            print (gt_classes.shape)
+
+            if gt_classes.shape[0] == 0:
+                return self.__getitem__(0)
 
             gt_bboxes_xxyyc = np.zeros((gt_bboxes_xxyy.shape[0], 5), dtype=gt_bboxes_xxyy.dtype) # (shape: (num_gt_objects, 5), (x_min, x_max, y_min, y_max, class_label))
             gt_bboxes_xxyyc[:, 0:4] = gt_bboxes_xxyy
             gt_bboxes_xxyyc[:, 4] = gt_classes
 
+            scale = float(float(self.img_width)/float(self.nuscenes_img_width))
+            img = cv2.resize(img, (self.img_width, int(scale*self.nuscenes_img_height))) # (shape: (621, img_width, 3))
+            gt_bboxes_xxyyc[:, 0:4] = gt_bboxes_xxyyc[:, 0:4]*scale
+
+            start = int(np.random.uniform(low=0, high=(img.shape[0] - self.img_height)))
+            img = img[start:(start + self.img_height)] # (shape: (img_height, img_width, 3))
+            gt_bboxes_xxyyc[:, 2:4] = gt_bboxes_xxyyc[:, 2:4] - start
+
         ########################################################################
         # data augmentation START:
         ########################################################################
-        # # # # # debug visualization:
-        bbox_polys = []
-        for i in range(gt_bboxes_xxyy.shape[0]):
-            bbox = gt_bboxes_xxyy[i]
-            bbox_poly = create2Dbbox_poly(bbox)
-            bbox_polys.append(bbox_poly)
-        img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
-        cv2.imshow("test", img_with_gt_bboxes)
-        cv2.waitKey(0)
-        # # # # #
+        # # # # # # debug visualization:
+        # bbox_polys = []
+        # for i in range(gt_bboxes_xxyyc.shape[0]):
+        #     bbox = gt_bboxes_xxyyc[i, 0:4]
+        #     bbox_poly = create2Dbbox_poly(bbox)
+        #     bbox_polys.append(bbox_poly)
+        # img_with_gt_bboxes = draw_2d_polys_no_text(img, bbox_polys)
+        # cv2.imshow("test", img_with_gt_bboxes)
+        # cv2.waitKey(0)
+        # # # # # #
 
         # flip the img and the labels with 0.5 probability:
         img, gt_bboxes_xyxyc = self.random_horizontal_flip(img, bboxes_xxyyc_2_xyxyc(gt_bboxes_xxyyc))
@@ -2072,7 +2083,7 @@ class DatasetKITTINuscenesAugmentation(torch.utils.data.Dataset):
     def __len__(self):
         return self.num_examples
 
-test = DatasetKITTINuscenesAugmentation("/home/fregu856/project1/data/nuscenes", "/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", "train")
-for i in range(10):
-    _ = test.__getitem__(i)
-# _ = test.__getitem__(0)
+# test = DatasetKITTINuscenesAugmentation("/home/fregu856/project1/data/nuscenes", "/home/fregu856/exjobb/data/kitti", "/home/fregu856/exjobb/data/kitti/meta", "train")
+# for i in range(200):
+#     _ = test.__getitem__(i)
+# # _ = test.__getitem__(0)
