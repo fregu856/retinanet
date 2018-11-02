@@ -7,10 +7,10 @@ import torch
 
 from datasets import BboxEncoder
 
-experiment_name = "val_random_model_9_2_3_2_epoch_380" # NOTE change this for every new experiment
+experiment_name = "val_model_15_epoch_50_025" # NOTE change this for every new experiment
 
 # NOTE! here you can choose what model's output you want to compute metrics for
-with open("/home/fregu856/retinanet/training_logs/model_9_2_3_2/eval_dict_val.pkl", "rb") as file: # NOTE! you'll have to adapt this for your file structure
+with open("/home/fregu856/retinanet/training_logs/model_15/eval_dict_val_50_025.pkl", "rb") as file: # NOTE! you'll have to adapt this for your file structure
     eval_dict = pickle.load(file)
 
 class_label_to_string = {1: "Car",

@@ -64,12 +64,12 @@ img_dir = data_dir + "image_2/"
 bbox_encoder = BboxEncoder(img_h=img_height, img_w=img_width)
 
 # NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! NOTE! # NOTE!
-with open("/home/fregu856/retinanet/training_logs/model_14/eval_dict_val_kitti.pkl", "rb") as file:
+with open("/home/fregu856/retinanet/training_logs/model_15/eval_dict_val.pkl", "rb") as file:
     eval_dict = pickle.load(file)
 
 for img_id in eval_dict:
     if img_id in ["000000", "000001", "000002", "000003", "000004", "000005", "000006", "000007", "000008", "000009", "000010", "000011", "000012", "000013", "000014", "000015", "000016", "000017", "000018", "000019", "000020", "000021", "000022", "000023", "000024", "000025", "000026", "000027", "000028", "000029", "000030"]:
-        print img_id
+        print (img_id)
 
         img_dict = eval_dict[img_id]
 

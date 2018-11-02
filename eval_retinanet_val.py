@@ -201,7 +201,7 @@ lambda_value = 10.0 # (loss weight)
 lambda_value_neg = 1.0
 
 network = RetinaNet("eval_val", project_dir="/root/retinanet").cuda()
-network.load_state_dict(torch.load("/root/retinanet/training_logs/model_14/checkpoints/model_14_epoch_200.pth"))
+network.load_state_dict(torch.load("/root/retinanet/training_logs/model_15/checkpoints/model_15_epoch_50.pth"))
 
 # val_dataset = DatasetSynscapesEval(synscapes_path="/root/data/synscapes",
 #                                    synscapes_meta_path="/root/retinanet/data/synscapes_meta",
