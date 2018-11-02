@@ -162,3 +162,63 @@ Car (Detection)	75.21 %	55.68 %	48.40 %
 Pedestrian (Detection)	31.69 %	25.36 %	22.16 %
 Cyclist (Detection)	25.21 %	17.69 %	16.19 %
 ```
+
+15 epoch 50 on val (thresh=0.7):
+```
+car easy detection 0.7796202727272727
+car moderate detection 0.6389526363636363
+car hard detection 0.5715755454545455
+=================
+pedestrian easy detection 0.3986153636363637
+pedestrian moderate detection 0.3942484545454546
+pedestrian hard detection 0.32656490909090913
+=================
+cyclist easy detection 0.4149840909090909
+cyclist moderate detection 0.2773230909090909
+cyclist hard detection 0.27941445454545455
+```
+
+15 epoch 50 on val (thresh=0.25):
+```
+car easy detection 0.7796202727272727
+car moderate detection 0.6757345454545454
+car hard detection 0.6126170000000001
+=================
+pedestrian easy detection 0.5041476363636364
+pedestrian moderate detection 0.4443453636363637
+pedestrian hard detection 0.41797245454545456
+=================
+cyclist easy detection 0.4392936363636364
+cyclist moderate detection 0.29614972727272726
+cyclist hard detection 0.27511281818181815
+```
+
+15 epoch 200 on val (thresh=0.7):
+```
+car easy detection 0.8002345454545453
+car moderate detection 0.6468827272727272
+car hard detection 0.579370090909091
+=================
+pedestrian easy detection 0.481072
+pedestrian moderate detection 0.4121746363636363
+pedestrian hard detection 0.40411963636363635
+=================
+cyclist easy detection 0.2900389090909092
+cyclist moderate detection 0.18611536363636363
+cyclist hard detection 0.20336909090909092
+```
+
+16 epoch 150 on val (thresh=0.7):
+```
+car easy detection 0.6245824545454545
+car moderate detection 0.4797283636363636
+car hard detection 0.43074445454545457
+=================
+pedestrian easy detection 0.2845867272727273
+pedestrian moderate detection 0.28918472727272726
+pedestrian hard detection 0.2277243636363636
+=================
+cyclist easy detection 0.07169636363636364
+cyclist moderate detection 0.11331927272727273
+cyclist hard detection 0.11395054545454544
+```
