@@ -178,6 +178,21 @@ cyclist moderate detection 0.2773230909090909
 cyclist hard detection 0.27941445454545455
 ```
 
+15 epoch 50 on val (thresh=0.25):
+```
+car easy detection 0.7796202727272727
+car moderate detection 0.6757345454545454
+car hard detection 0.6126170000000001
+=================
+pedestrian easy detection 0.5041476363636364
+pedestrian moderate detection 0.4443453636363637
+pedestrian hard detection 0.41797245454545456
+=================
+cyclist easy detection 0.4392936363636364
+cyclist moderate detection 0.29614972727272726
+cyclist hard detection 0.27511281818181815
+```
+
 15 epoch 200 on val (thresh=0.7):
 ```
 car easy detection 0.8002345454545453
