@@ -55,7 +55,7 @@ class FPN_Bottleneck(nn.Module):
     def forward(self, x):
         # (x has shape (batch_size, 3, h, w))
 
-        x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1) # (shape: (batch_size, 3, h/2, w/2))
+        # x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1) # (shape: (batch_size, 3, h/2, w/2))
 
         # pass x through the pretrained ResNet and collect feature maps:
         c = []
@@ -64,7 +64,7 @@ class FPN_Bottleneck(nn.Module):
             if isinstance(layer, nn.Sequential):
                 c.append(x)
 
-        # NOTE! all spatial dimensons below should actually be divided by 2 (because of the initial max pool)
+        ################################################################## NOTE! all spatial dimensons below should actually be divided by 2 (because of the initial max pool)
 
         c2 = c[0] # (shape: (batch_size, 4*64, h/4, w/4))
         c3 = c[1] # (shape: (batch_size, 4*128, h/8, w/8))
@@ -135,7 +135,7 @@ class FPN_BasicBlock(nn.Module):
     def forward(self, x):
         # (x has shape (batch_size, 3, h, w))
 
-        x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1) # (shape: (batch_size, 3, h/2, w/2))
+        #x = F.max_pool2d(x, kernel_size=3, stride=2, padding=1) # (shape: (batch_size, 3, h/2, w/2))
 
         # pass x through the pretrained ResNet and collect feature maps:
         c = []
@@ -144,7 +144,7 @@ class FPN_BasicBlock(nn.Module):
             if isinstance(layer, nn.Sequential):
                 c.append(x)
 
-        # NOTE! all spatial dimensons below should actually be divided by 2 (because of the initial max pool)
+        ################################################################## NOTE! all spatial dimensons below should actually be divided by 2 (because of the initial max pool)
 
         c2 = c[0] # (shape: (batch_size, 64, h/4, w/4))
         c3 = c[1] # (shape: (batch_size, 128, h/8, w/8))

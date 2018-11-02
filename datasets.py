@@ -95,20 +95,22 @@ class BboxEncoder:
         self.img_size = torch.Tensor([self.img_w, self.img_h])
 
         self.anchors_per_cell = 9 # (3 aspect ratios * 3 scale ratios)
-        self.num_feature_maps = len(self.anchor_areas) # (p4, p5, p6, p7, p8)
+        self.num_feature_maps = len(self.anchor_areas) # (p3, p4, p5, p6, p7)
 
+        # (p3 has shape: (batch_size, 256, h/8, w/8))
         # (p4 has shape: (batch_size, 256, h/16, w/16))
         # (p5 has shape: (batch_size, 256, h/32, w/32))
         # (p6 has shape: (batch_size, 256, h/64, w/64))
         # (p7 has shape: (batch_size, 256, h/128, w/128))
-        # (p8 has shape: (batch_size, 256, h/256, w/256))
-        self.feature_map_sizes = [(self.img_size/pow(2.0, i+4)).ceil() for i in range(self.num_feature_maps)]
+        self.feature_map_sizes = [(self.img_size/pow(2.0, i+3)).ceil() for i in range(self.num_feature_maps)]
 
         self.anchor_sizes = self._get_anchor_sizes() # (Tensor of shape: (num_feature_maps, anchors_per_cell, 2)) (w, h)
 
         self.anchor_bboxes = self._get_anchor_bboxes() # (Tensor of shape: (num_anchors, 4), (x, y, w, h), where num_anchors == fm1_h*fm1_w*anchors_per_cell + ... + fmN_h*fmN_w*anchors_per_cell)
 
         self.num_anchors = self.anchor_bboxes.size(0) # (total number of anchor bboxes, num_anchors == fm1_h*fm1_w*anchors_per_cell + ... + fmN_h*fmN_w*anchors_per_cell)
+
+        print (self.num_anchors)
 
     def _get_anchor_sizes(self):
         anchor_sizes = []
@@ -1515,7 +1517,7 @@ class DatasetKITTISynscapesAugmentation(torch.utils.data.Dataset):
             kitti_img_ids = pickle.load(file)
 
         num_kitti_imgs = len(kitti_img_ids)
-        synscapes_img_ids = synscapes_img_ids[0:(2*num_kitti_imgs)]
+        synscapes_img_ids = synscapes_img_ids[0:num_kitti_imgs]
 
         self.synscapes_img_height = 720
         self.synscapes_img_width = 1440
