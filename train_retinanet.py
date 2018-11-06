@@ -3225,14 +3225,14 @@ import cv2
 import time
 
 # NOTE! change this to not overwrite all log data when you train the model:
-model_id = "17_4"
+model_id = "17_5"
 
 num_epochs = 1000
 batch_size = 16
 learning_rate = 0.0001
 
 lambda_value = 100.0 # (loss weight)
-lambda_value_neg = 80.0
+lambda_value_neg = 1.0
 
 gamma = 2.0
 
